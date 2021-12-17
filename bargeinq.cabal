@@ -1,0 +1,81 @@
+cabal-version:       3.0
+name:                bargeinq
+version:             0.1.0.0
+synopsis:            SYNOPSIS HERE
+description:         DESCRIPTION HERE
+homepage:            https://github.com/andrevdm//bargeinq#readme
+license:             BSD-3-Clause OR Apache-2.0
+license-file:        LICENSE
+author:              Andre Van Der Merwe
+maintainer:          Andre Van Der Merwe
+copyright:           2021 Andre Van Der Merwe <andre@andrevdm.com>
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+
+common common-options
+  build-depends:
+    base >=4.9 && <5
+  default-language:
+    Haskell2010
+
+
+common common-ghc-options-ide
+  ghc-options: -fwrite-ide-info -hiedir=.hie
+
+common common-ghc-options
+  ghc-options: -Wall -Wimplicit-prelude -Wincomplete-uni-patterns -Wincomplete-record-updates -Wcompat -Wredundant-constraints -Wnoncanonical-monad-instances -Widentities -fhide-source-paths -Wpartial-fields -fhide-source-paths -freverse-errors
+
+
+library
+  import:                 common-options
+  import:                 common-ghc-options
+
+  if impl(ghc >= 8.8.1)
+    import:                common-ghc-options-ide
+
+  hs-source-dirs:      src
+  exposed-modules:     Lib
+  build-depends:       protolude
+                     , text
+                     , containers
+  default-language:    Haskell2010
+
+executable bargeinq-exe
+  import:                 common-options
+  import:                 common-ghc-options
+
+  if impl(ghc >= 8.8.1)
+    import:                common-ghc-options-ide
+
+  ghc-options:         -threaded
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:       bargeinq
+                     , protolude
+                     , text
+                     , containers
+  default-language:    Haskell2010
+
+test-suite bargeinq-test
+  import:                 common-options
+  import:                 common-ghc-options
+
+  if impl(ghc >= 8.8.1)
+    import:                common-ghc-options-ide
+
+  ghc-options:         -threaded
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Tests.hs
+  build-depends:       bargeinq
+                     , protolude
+                     , text
+                     , containers
+                     , hedgehog
+  other-modules:       DemoTests
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/andrevdm/bargeinq
