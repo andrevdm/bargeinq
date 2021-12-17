@@ -44,10 +44,9 @@ CREATE TABLE if not exists work_item_status
 insert into work_item_status (wsid, name) values (900300, 'pending');
 
 
-CREATE SEQUENCE if not exists work_item_seq;
 CREATE TABLE if not exists work_item
 (
-  wiid bigint NOT NULL DEFAULT nextval('work_item_seq'::regclass),
+  wiid uuid NOT NULL,
   system_id uuid NOT NULL references queue_config(system_id),
   wtid uuid NOT NULL references work_type(wtId),
   ignore_until timestamp without time zone null,
@@ -79,7 +78,7 @@ CREATE SEQUENCE if not exists pending_work_item_seq;
 CREATE TABLE if not exists pending_work_item
 (
   piId bigint NOT NULL DEFAULT nextval('pending_work_item_seq'::regclass),
-  wiId bigint NOT NULL references work_item(wiId),
+  wiId uuid NOT NULL references work_item(wiId),
   created_at timestamp without time zone not null,
   active timestamp without time zone null,
   parent_pending_worker_item bigint NOT NULL references pending_work_item(piId),
@@ -103,7 +102,7 @@ CREATE SEQUENCE if not exists queue_seq;
 CREATE TABLE if not exists queue
 (
   qId bigint NOT NULL DEFAULT nextval('queue_seq'::regclass),
-  wiId bigint NOT NULL references pending_work_item(piId),
+  piId bigint NOT NULL references pending_work_item(piId),
   locked_until timestamp without time zone null,
   created_at timestamp without time zone not null,
   started_at timestamp without time zone null,
@@ -166,7 +165,6 @@ drop table queue_status;
 drop table pending_work_item;
 drop sequence pending_work_item_seq;
 drop table work_item;
-drop sequence work_item_seq;
 drop table work_item_status;
 drop table work_type;
 drop table queue_lock;

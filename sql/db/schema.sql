@@ -38,7 +38,7 @@ CREATE SEQUENCE public.pending_work_item_seq
 
 CREATE TABLE public.pending_work_item (
     piid bigint DEFAULT nextval('public.pending_work_item_seq'::regclass) NOT NULL,
-    wiid bigint NOT NULL,
+    wiid uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
     active timestamp without time zone,
     parent_pending_worker_item bigint NOT NULL
@@ -63,7 +63,7 @@ CREATE SEQUENCE public.queue_seq
 
 CREATE TABLE public.queue (
     qid bigint DEFAULT nextval('public.queue_seq'::regclass) NOT NULL,
-    wiid bigint NOT NULL,
+    piid bigint NOT NULL,
     locked_until timestamp without time zone,
     created_at timestamp without time zone NOT NULL,
     started_at timestamp without time zone,
@@ -168,23 +168,11 @@ CREATE TABLE public.queue_status (
 
 
 --
--- Name: work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.work_item_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
 -- Name: work_item; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.work_item (
-    wiid bigint DEFAULT nextval('public.work_item_seq'::regclass) NOT NULL,
+    wiid uuid NOT NULL,
     system_id uuid NOT NULL,
     wtid uuid NOT NULL,
     ignore_until timestamp without time zone,
@@ -200,6 +188,18 @@ CREATE TABLE public.work_item (
     attempts integer NOT NULL,
     cleanup_done timestamp without time zone
 );
+
+
+--
+-- Name: work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.work_item_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
 --
@@ -511,19 +511,19 @@ ALTER TABLE ONLY public.queue_log
 
 
 --
+-- Name: queue queue_piid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue
+    ADD CONSTRAINT queue_piid_fkey FOREIGN KEY (piid) REFERENCES public.pending_work_item(piid);
+
+
+--
 -- Name: queue queue_status_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.queue
     ADD CONSTRAINT queue_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.queue_status(qsid);
-
-
---
--- Name: queue queue_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.queue
-    ADD CONSTRAINT queue_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.pending_work_item(piid);
 
 
 --
