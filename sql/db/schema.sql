@@ -21,10 +21,10 @@ CREATE TABLE public.dbmate_migrations (
 
 
 --
--- Name: pendingworkitem_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: pending_work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.pendingworkitem_seq
+CREATE SEQUENCE public.pending_work_item_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -33,15 +33,15 @@ CREATE SEQUENCE public.pendingworkitem_seq
 
 
 --
--- Name: pendingworkitem; Type: TABLE; Schema: public; Owner: -
+-- Name: pending_work_item; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.pendingworkitem (
-    piid bigint DEFAULT nextval('public.pendingworkitem_seq'::regclass) NOT NULL,
+CREATE TABLE public.pending_work_item (
+    piid bigint DEFAULT nextval('public.pending_work_item_seq'::regclass) NOT NULL,
     wiid bigint NOT NULL,
-    createdat timestamp without time zone NOT NULL,
+    created_at timestamp without time zone NOT NULL,
     active timestamp without time zone,
-    parentpendingworkeritem bigint NOT NULL
+    parent_pending_worker_item bigint NOT NULL
 );
 
 
@@ -64,45 +64,45 @@ CREATE SEQUENCE public.queue_seq
 CREATE TABLE public.queue (
     qid bigint DEFAULT nextval('public.queue_seq'::regclass) NOT NULL,
     wiid bigint NOT NULL,
-    lockeduntil timestamp without time zone,
-    createdat timestamp without time zone NOT NULL,
-    startedat timestamp without time zone,
-    doneat timestamp without time zone,
+    locked_until timestamp without time zone,
+    created_at timestamp without time zone NOT NULL,
+    started_at timestamp without time zone,
+    done_at timestamp without time zone,
     active timestamp without time zone,
-    heartbeatat timestamp without time zone,
-    workername text NOT NULL,
-    workerinfo text NOT NULL,
-    cleanupdone timestamp without time zone,
-    statusid integer NOT NULL
+    heartbeat_at timestamp without time zone,
+    worker_name text NOT NULL,
+    worker_info text NOT NULL,
+    cleanup_done timestamp without time zone,
+    status_id integer NOT NULL
 );
 
 
 --
--- Name: queueconfig; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queueconfig (
-    systemid uuid NOT NULL,
-    requiresgloballock boolean NOT NULL
+CREATE TABLE public.queue_config (
+    system_id uuid NOT NULL,
+    requires_global_lock boolean NOT NULL
 );
 
 
 --
--- Name: queuelock; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_lock; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queuelock (
-    systemid uuid NOT NULL,
+CREATE TABLE public.queue_lock (
+    system_id uuid NOT NULL,
     host text NOT NULL,
-    lockeduntil timestamp without time zone
+    locked_until timestamp without time zone
 );
 
 
 --
--- Name: queuelog_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: queue_log_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.queuelog_seq
+CREATE SEQUENCE public.queue_log_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -111,67 +111,67 @@ CREATE SEQUENCE public.queuelog_seq
 
 
 --
--- Name: queuelog; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_log; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queuelog (
-    qlid bigint DEFAULT nextval('public.queuelog_seq'::regclass) NOT NULL,
+CREATE TABLE public.queue_log (
+    qlid bigint DEFAULT nextval('public.queue_log_seq'::regclass) NOT NULL,
     qid bigint NOT NULL,
-    levelid integer NOT NULL,
-    logtitle text NOT NULL,
-    logtype text NOT NULL,
-    logdetail text,
-    logdata jsonb,
-    logat timestamp without time zone NOT NULL
+    level_id integer NOT NULL,
+    log_title text NOT NULL,
+    log_type text NOT NULL,
+    log_detail text,
+    log_data jsonb,
+    log_at timestamp without time zone NOT NULL
 );
 
 
 --
--- Name: queuelogjob; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_log_job; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queuelogjob (
+CREATE TABLE public.queue_log_job (
     jobid uuid NOT NULL
 )
-INHERITS (public.queuelog);
+INHERITS (public.queue_log);
 
 
 --
--- Name: queueloglevel; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_log_level; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queueloglevel (
+CREATE TABLE public.queue_log_level (
     llid integer NOT NULL,
     name text NOT NULL
 );
 
 
 --
--- Name: queuelogsample; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_log_sample; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queuelogsample (
+CREATE TABLE public.queue_log_sample (
     jobid uuid NOT NULL,
     sampleid uuid NOT NULL
 )
-INHERITS (public.queuelog);
+INHERITS (public.queue_log);
 
 
 --
--- Name: queuestatus; Type: TABLE; Schema: public; Owner: -
+-- Name: queue_status; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queuestatus (
+CREATE TABLE public.queue_status (
     qsid integer NOT NULL,
     name text NOT NULL
 );
 
 
 --
--- Name: workitem_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.workitem_seq
+CREATE SEQUENCE public.work_item_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -180,66 +180,66 @@ CREATE SEQUENCE public.workitem_seq
 
 
 --
--- Name: workitem; Type: TABLE; Schema: public; Owner: -
+-- Name: work_item; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.workitem (
-    wiid bigint DEFAULT nextval('public.workitem_seq'::regclass) NOT NULL,
-    systemid uuid NOT NULL,
+CREATE TABLE public.work_item (
+    wiid bigint DEFAULT nextval('public.work_item_seq'::regclass) NOT NULL,
+    system_id uuid NOT NULL,
     wtid uuid NOT NULL,
-    ignoreuntil timestamp without time zone,
-    retriesleft integer NOT NULL,
-    createdat timestamp without time zone NOT NULL,
-    doneat timestamp without time zone,
+    ignore_until timestamp without time zone,
+    retries_left integer NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    done_at timestamp without time zone,
     active timestamp without time zone,
-    groupid uuid,
-    dependsongroups uuid[],
-    dependsonworkitem uuid[],
-    statusid integer NOT NULL,
-    backoffcount integer NOT NULL,
+    group_id uuid,
+    depends_on_groups uuid[],
+    depends_on_work_item uuid[],
+    status_id integer NOT NULL,
+    backoff_count integer NOT NULL,
     attempts integer NOT NULL,
-    cleanupdone timestamp without time zone
+    cleanup_done timestamp without time zone
 );
 
 
 --
--- Name: workitemstatus; Type: TABLE; Schema: public; Owner: -
+-- Name: work_item_status; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.workitemstatus (
+CREATE TABLE public.work_item_status (
     wsid integer NOT NULL,
     name text NOT NULL
 );
 
 
 --
--- Name: worktype; Type: TABLE; Schema: public; Owner: -
+-- Name: work_type; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.worktype (
+CREATE TABLE public.work_type (
     wtid uuid NOT NULL,
-    systemid uuid NOT NULL,
+    system_id uuid NOT NULL,
     name text NOT NULL,
-    defaultretries integer NOT NULL,
-    defaultbackoffseconds integer[] NOT NULL,
-    defaultheartbeatcheckperiod integer,
-    defaultexecenvironment text NOT NULL,
-    dequeuelockperiodseconds integer NOT NULL
+    default_retries integer NOT NULL,
+    default_backoff_seconds integer[] NOT NULL,
+    default_heartbeat_check_period integer,
+    default_exec_environment text NOT NULL,
+    dequeue_lock_period_seconds integer NOT NULL
 );
 
 
 --
--- Name: queuelogjob qlid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: queue_log_job qlid; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuelogjob ALTER COLUMN qlid SET DEFAULT nextval('public.queuelog_seq'::regclass);
+ALTER TABLE ONLY public.queue_log_job ALTER COLUMN qlid SET DEFAULT nextval('public.queue_log_seq'::regclass);
 
 
 --
--- Name: queuelogsample qlid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: queue_log_sample qlid; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuelogsample ALTER COLUMN qlid SET DEFAULT nextval('public.queuelog_seq'::regclass);
+ALTER TABLE ONLY public.queue_log_sample ALTER COLUMN qlid SET DEFAULT nextval('public.queue_log_seq'::regclass);
 
 
 --
@@ -251,11 +251,43 @@ ALTER TABLE ONLY public.dbmate_migrations
 
 
 --
--- Name: pendingworkitem pendingworkitem_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: pending_work_item pending_work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pendingworkitem
-    ADD CONSTRAINT pendingworkitem_pkey PRIMARY KEY (piid);
+ALTER TABLE ONLY public.pending_work_item
+    ADD CONSTRAINT pending_work_item_pkey PRIMARY KEY (piid);
+
+
+--
+-- Name: queue_config queue_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_config
+    ADD CONSTRAINT queue_config_pkey PRIMARY KEY (system_id);
+
+
+--
+-- Name: queue_lock queue_lock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_lock
+    ADD CONSTRAINT queue_lock_pkey PRIMARY KEY (system_id);
+
+
+--
+-- Name: queue_log_level queue_log_level_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_log_level
+    ADD CONSTRAINT queue_log_level_pkey PRIMARY KEY (llid);
+
+
+--
+-- Name: queue_log queue_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_log
+    ADD CONSTRAINT queue_log_pkey PRIMARY KEY (qlid);
 
 
 --
@@ -267,81 +299,49 @@ ALTER TABLE ONLY public.queue
 
 
 --
--- Name: queueconfig queueconfig_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: queue_status queue_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queueconfig
-    ADD CONSTRAINT queueconfig_pkey PRIMARY KEY (systemid);
-
-
---
--- Name: queuelock queuelock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.queuelock
-    ADD CONSTRAINT queuelock_pkey PRIMARY KEY (systemid);
+ALTER TABLE ONLY public.queue_status
+    ADD CONSTRAINT queue_status_pkey PRIMARY KEY (qsid);
 
 
 --
--- Name: queuelog queuelog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: work_item work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuelog
-    ADD CONSTRAINT queuelog_pkey PRIMARY KEY (qlid);
-
-
---
--- Name: queueloglevel queueloglevel_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.queueloglevel
-    ADD CONSTRAINT queueloglevel_pkey PRIMARY KEY (llid);
+ALTER TABLE ONLY public.work_item
+    ADD CONSTRAINT work_item_pkey PRIMARY KEY (wiid);
 
 
 --
--- Name: queuestatus queuestatus_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: work_item_status work_item_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuestatus
-    ADD CONSTRAINT queuestatus_pkey PRIMARY KEY (qsid);
-
-
---
--- Name: workitem workitem_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.workitem
-    ADD CONSTRAINT workitem_pkey PRIMARY KEY (wiid);
+ALTER TABLE ONLY public.work_item_status
+    ADD CONSTRAINT work_item_status_pkey PRIMARY KEY (wsid);
 
 
 --
--- Name: workitemstatus workitemstatus_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: work_type work_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.workitemstatus
-    ADD CONSTRAINT workitemstatus_pkey PRIMARY KEY (wsid);
-
-
---
--- Name: worktype worktype_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.worktype
-    ADD CONSTRAINT worktype_pkey PRIMARY KEY (wtid);
+ALTER TABLE ONLY public.work_type
+    ADD CONSTRAINT work_type_pkey PRIMARY KEY (wtid);
 
 
 --
--- Name: ix_pendingworkitem_active; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_pending_work_item_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_pendingworkitem_active ON public.pendingworkitem USING btree (active);
+CREATE INDEX ix_pending_work_item_active ON public.pending_work_item USING btree (active);
 
 
 --
--- Name: ix_pendingworkitem_wiid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_pending_work_item_wi_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_pendingworkitem_wiid ON public.pendingworkitem USING btree (wiid);
+CREATE INDEX ix_pending_work_item_wi_id ON public.pending_work_item USING btree (wiid);
 
 
 --
@@ -352,24 +352,45 @@ CREATE INDEX ix_queue_active ON public.queue USING btree (active);
 
 
 --
--- Name: ix_queue_cleanupdone; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_queue_cleanup_done; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_queue_cleanupdone ON public.queue USING btree (cleanupdone);
-
-
---
--- Name: ix_queue_heartbeatat; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_queue_heartbeatat ON public.queue USING btree (heartbeatat);
+CREATE INDEX ix_queue_cleanup_done ON public.queue USING btree (cleanup_done);
 
 
 --
--- Name: ix_queue_lockeduntil; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_queue_heartbeat_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_queue_lockeduntil ON public.queue USING btree (lockeduntil);
+CREATE INDEX ix_queue_heartbeat_at ON public.queue USING btree (heartbeat_at);
+
+
+--
+-- Name: ix_queue_locked_until; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queue_locked_until ON public.queue USING btree (locked_until);
+
+
+--
+-- Name: ix_queue_log_job_jobid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queue_log_job_jobid ON public.queue_log_job USING btree (jobid);
+
+
+--
+-- Name: ix_queue_log_sample_job_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queue_log_sample_job_id ON public.queue_log_sample USING btree (jobid);
+
+
+--
+-- Name: ix_queue_log_sample_sample_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_queue_log_sample_sample_id ON public.queue_log_sample USING btree (sampleid);
 
 
 --
@@ -380,118 +401,121 @@ CREATE INDEX ix_queue_qid ON public.queue USING btree (qid);
 
 
 --
--- Name: ix_queue_statusid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_queue_status_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_queue_statusid ON public.queue USING btree (statusid);
-
-
---
--- Name: ix_queuelogjob_jobid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_queuelogjob_jobid ON public.queuelogjob USING btree (jobid);
+CREATE INDEX ix_queue_status_id ON public.queue USING btree (status_id);
 
 
 --
--- Name: ix_queuelogsample_jobid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_queuelogsample_jobid ON public.queuelogsample USING btree (jobid);
-
-
---
--- Name: ix_queuelogsample_sampleid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_queuelogsample_sampleid ON public.queuelogsample USING btree (sampleid);
+CREATE INDEX ix_work_item_active ON public.work_item USING btree (active);
 
 
 --
--- Name: ix_workitem_active; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_cleanup_done; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_workitem_active ON public.workitem USING btree (active);
-
-
---
--- Name: ix_workitem_cleanupdone; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_workitem_cleanupdone ON public.workitem USING btree (cleanupdone);
+CREATE INDEX ix_work_item_cleanup_done ON public.work_item USING btree (cleanup_done);
 
 
 --
--- Name: ix_workitem_doneat; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_done_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_workitem_doneat ON public.workitem USING btree (doneat);
-
-
---
--- Name: ix_workitem_groupid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_workitem_groupid ON public.workitem USING btree (groupid);
+CREATE INDEX ix_work_item_done_at ON public.work_item USING btree (done_at);
 
 
 --
--- Name: ix_workitem_ignoreuntil; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_group_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_workitem_ignoreuntil ON public.workitem USING btree (ignoreuntil);
-
-
---
--- Name: ix_workitem_statusid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_workitem_statusid ON public.workitem USING btree (statusid);
+CREATE INDEX ix_work_item_group_id ON public.work_item USING btree (group_id);
 
 
 --
--- Name: ix_workitem_systemid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_ignore_until; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_workitem_systemid ON public.workitem USING btree (systemid);
-
-
---
--- Name: ix_workitem_wtid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_workitem_wtid ON public.workitem USING btree (wtid);
+CREATE INDEX ix_work_item_ignore_until ON public.work_item USING btree (ignore_until);
 
 
 --
--- Name: ix_worktype_systemid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_work_item_status_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_worktype_systemid ON public.worktype USING btree (systemid);
-
-
---
--- Name: pendingworkitem pendingworkitem_parentpendingworkeritem_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pendingworkitem
-    ADD CONSTRAINT pendingworkitem_parentpendingworkeritem_fkey FOREIGN KEY (parentpendingworkeritem) REFERENCES public.pendingworkitem(piid);
+CREATE INDEX ix_work_item_status_id ON public.work_item USING btree (status_id);
 
 
 --
--- Name: pendingworkitem pendingworkitem_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_work_item_system_id; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pendingworkitem
-    ADD CONSTRAINT pendingworkitem_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.workitem(wiid);
+CREATE INDEX ix_work_item_system_id ON public.work_item USING btree (system_id);
 
 
 --
--- Name: queue queue_statusid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_work_item_wtid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_work_item_wtid ON public.work_item USING btree (wtid);
+
+
+--
+-- Name: ix_work_type_system_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_work_type_system_id ON public.work_type USING btree (system_id);
+
+
+--
+-- Name: pending_work_item pending_work_item_parent_pending_worker_item_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pending_work_item
+    ADD CONSTRAINT pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.pending_work_item(piid);
+
+
+--
+-- Name: pending_work_item pending_work_item_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pending_work_item
+    ADD CONSTRAINT pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.work_item(wiid);
+
+
+--
+-- Name: queue_lock queue_lock_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_lock
+    ADD CONSTRAINT queue_lock_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.queue_config(system_id);
+
+
+--
+-- Name: queue_log queue_log_level_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_log
+    ADD CONSTRAINT queue_log_level_id_fkey FOREIGN KEY (level_id) REFERENCES public.queue_log_level(llid);
+
+
+--
+-- Name: queue_log queue_log_qid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_log
+    ADD CONSTRAINT queue_log_qid_fkey FOREIGN KEY (qid) REFERENCES public.queue(qid);
+
+
+--
+-- Name: queue queue_status_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.queue
-    ADD CONSTRAINT queue_statusid_fkey FOREIGN KEY (statusid) REFERENCES public.queuestatus(qsid);
+    ADD CONSTRAINT queue_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.queue_status(qsid);
 
 
 --
@@ -499,63 +523,39 @@ ALTER TABLE ONLY public.queue
 --
 
 ALTER TABLE ONLY public.queue
-    ADD CONSTRAINT queue_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.pendingworkitem(piid);
+    ADD CONSTRAINT queue_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.pending_work_item(piid);
 
 
 --
--- Name: queuelock queuelock_systemid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: work_item work_item_status_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuelock
-    ADD CONSTRAINT queuelock_systemid_fkey FOREIGN KEY (systemid) REFERENCES public.queueconfig(systemid);
-
-
---
--- Name: queuelog queuelog_levelid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.queuelog
-    ADD CONSTRAINT queuelog_levelid_fkey FOREIGN KEY (levelid) REFERENCES public.queueloglevel(llid);
+ALTER TABLE ONLY public.work_item
+    ADD CONSTRAINT work_item_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.work_item_status(wsid);
 
 
 --
--- Name: queuelog queuelog_qid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: work_item work_item_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queuelog
-    ADD CONSTRAINT queuelog_qid_fkey FOREIGN KEY (qid) REFERENCES public.queue(qid);
-
-
---
--- Name: workitem workitem_statusid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.workitem
-    ADD CONSTRAINT workitem_statusid_fkey FOREIGN KEY (statusid) REFERENCES public.workitemstatus(wsid);
+ALTER TABLE ONLY public.work_item
+    ADD CONSTRAINT work_item_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.queue_config(system_id);
 
 
 --
--- Name: workitem workitem_systemid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: work_item work_item_wtid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.workitem
-    ADD CONSTRAINT workitem_systemid_fkey FOREIGN KEY (systemid) REFERENCES public.queueconfig(systemid);
-
-
---
--- Name: workitem workitem_wtid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.workitem
-    ADD CONSTRAINT workitem_wtid_fkey FOREIGN KEY (wtid) REFERENCES public.worktype(wtid);
+ALTER TABLE ONLY public.work_item
+    ADD CONSTRAINT work_item_wtid_fkey FOREIGN KEY (wtid) REFERENCES public.work_type(wtid);
 
 
 --
--- Name: worktype worktype_systemid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: work_type work_type_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.worktype
-    ADD CONSTRAINT worktype_systemid_fkey FOREIGN KEY (systemid) REFERENCES public.queueconfig(systemid);
+ALTER TABLE ONLY public.work_type
+    ADD CONSTRAINT work_type_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.queue_config(system_id);
 
 
 --

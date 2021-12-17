@@ -1,174 +1,174 @@
 -- migrate:up
-CREATE TABLE if not exists queueConfig
+CREATE TABLE if not exists queue_config
 (
-  systemId uuid NOT NULL,
-  requiresGlobalLock boolean not null,
+  system_id uuid NOT NULL,
+  requires_global_lock boolean not null,
 
-  CONSTRAINT queueConfig_pkey PRIMARY KEY (systemId)
+  CONSTRAINT queue_config_pkey PRIMARY KEY (system_id)
 );
 
 
-CREATE TABLE if not exists queueLock
+CREATE TABLE if not exists queue_lock
 (
-  systemId uuid NOT NULL references queueConfig(systemId),
+  system_id uuid NOT NULL references queue_config(system_id),
   host text COLLATE pg_catalog."default" NOT NULL,
-  lockedUntil timestamp without time zone null,
+  locked_until timestamp without time zone null,
 
-  CONSTRAINT queueLock_pkey PRIMARY KEY (systemId)
+  CONSTRAINT queue_lock_pkey PRIMARY KEY (system_id)
 );
 
 
-CREATE TABLE if not exists workType
+CREATE TABLE if not exists work_type
 (
   wtId uuid NOT NULL,
-  systemId uuid NOT NULL references queueConfig(systemId),
+  system_id uuid NOT NULL references queue_config(system_id),
   name text COLLATE pg_catalog."default" NOT NULL,
-  defaultRetries int NOT NULL,
-  defaultBackoffSeconds int[] NOT NULL,
-  defaultHeartBeatCheckPeriod int NULL,
-  defaultExecEnvironment text COLLATE pg_catalog."default" NOT NULL,
-  dequeueLockPeriodSeconds int NOT NULL,
+  default_retries int NOT NULL,
+  default_backoff_seconds int[] NOT NULL,
+  default_heartbeat_check_period int NULL,
+  default_exec_environment text COLLATE pg_catalog."default" NOT NULL,
+  dequeue_lock_period_seconds int NOT NULL,
 
-  CONSTRAINT workType_pkey PRIMARY KEY (wtId)
+  CONSTRAINT work_type_pkey PRIMARY KEY (wtId)
 );
-CREATE INDEX if not exists ix_workType_systemId ON workType (systemId);
+CREATE INDEX if not exists ix_work_type_system_id ON work_type (system_id);
 
 
-CREATE TABLE if not exists workItemStatus
-( wsId int NOT NULL,
+CREATE TABLE if not exists work_item_status
+( wsid int NOT NULL,
   name text COLLATE pg_catalog."default" NOT NULL,
 
-  CONSTRAINT workItemStatus_pkey PRIMARY KEY (wsId)
+  CONSTRAINT work_item_status_pkey PRIMARY KEY (wsId)
 );
 
-insert into workItemStatus (wsid, name) values (900300, 'pending');
+insert into work_item_status (wsid, name) values (900300, 'pending');
 
 
-CREATE SEQUENCE if not exists workItem_seq;
-CREATE TABLE if not exists workItem
+CREATE SEQUENCE if not exists work_item_seq;
+CREATE TABLE if not exists work_item
 (
-  wiId bigint NOT NULL DEFAULT nextval('workItem_seq'::regclass),
-  systemId uuid NOT NULL references queueConfig(systemId),
-  wtId uuid NOT NULL references workType(wtId),
-  ignoreUntil timestamp without time zone null,
-  retriesLeft int NOT NULL,
-  createdAt timestamp without time zone not null,
-  doneAt timestamp without time zone null,
+  wiid bigint NOT NULL DEFAULT nextval('work_item_seq'::regclass),
+  system_id uuid NOT NULL references queue_config(system_id),
+  wtid uuid NOT NULL references work_type(wtId),
+  ignore_until timestamp without time zone null,
+  retries_left int NOT NULL,
+  created_at timestamp without time zone not null,
+  done_at timestamp without time zone null,
   active timestamp without time zone null,
-  groupId uuid NULL,
-  dependsOnGroups uuid[] NULL,
-  dependsOnWorkItem uuid[] NULL,
-  statusId int NOT NULL references workItemStatus(wsId),
-  backoffCount int NOT NULL,
+  group_id uuid NULL,
+  depends_on_groups uuid[] NULL,
+  depends_on_work_item uuid[] NULL,
+  status_id int NOT NULL references work_item_status(wsId),
+  backoff_count int NOT NULL,
   attempts int NOT NULL,
-  cleanupDone timestamp without time zone null,
+  cleanup_done timestamp without time zone null,
 
-  CONSTRAINT workItem_pkey PRIMARY KEY (wiId)
+  CONSTRAINT work_item_pkey PRIMARY KEY (wiId)
 );
-CREATE INDEX if not exists ix_workItem_wtId ON workItem (wtId);
-CREATE INDEX if not exists ix_workItem_systemId ON workItem (systemId);
-CREATE INDEX if not exists ix_workItem_ignoreUntil ON workItem (ignoreUntil);
-CREATE INDEX if not exists ix_workItem_doneAt ON workItem (doneAt);
-CREATE INDEX if not exists ix_workItem_groupId ON workItem (groupId);
-CREATE INDEX if not exists ix_workItem_cleanupDone ON workItem (cleanupDone);
-CREATE INDEX if not exists ix_workItem_active ON workItem (active);
-CREATE INDEX if not exists ix_workItem_statusId ON workItem (statusId);
+CREATE INDEX if not exists ix_work_item_wtId ON work_item (wtId);
+CREATE INDEX if not exists ix_work_item_system_id ON work_item (system_id);
+CREATE INDEX if not exists ix_work_item_ignore_until ON work_item (ignore_until);
+CREATE INDEX if not exists ix_work_item_done_at ON work_item (done_at);
+CREATE INDEX if not exists ix_work_item_group_id ON work_item (group_id);
+CREATE INDEX if not exists ix_work_item_cleanup_done ON work_item (cleanup_done);
+CREATE INDEX if not exists ix_work_item_active ON work_item (active);
+CREATE INDEX if not exists ix_work_item_status_id ON work_item (status_id);
 
 
-CREATE SEQUENCE if not exists pendingWorkItem_seq;
-CREATE TABLE if not exists pendingWorkItem
+CREATE SEQUENCE if not exists pending_work_item_seq;
+CREATE TABLE if not exists pending_work_item
 (
-  piId bigint NOT NULL DEFAULT nextval('pendingWorkItem_seq'::regclass),
-  wiId bigint NOT NULL references workItem(wiId),
-  createdAt timestamp without time zone not null,
+  piId bigint NOT NULL DEFAULT nextval('pending_work_item_seq'::regclass),
+  wiId bigint NOT NULL references work_item(wiId),
+  created_at timestamp without time zone not null,
   active timestamp without time zone null,
-  parentPendingWorkerItem bigint NOT NULL references pendingWorkItem(piId),
+  parent_pending_worker_item bigint NOT NULL references pending_work_item(piId),
 
-  CONSTRAINT pendingWorkItem_pkey PRIMARY KEY (piId)
+  CONSTRAINT pending_work_item_pkey PRIMARY KEY (piId)
 );
-CREATE INDEX if not exists ix_pendingWorkItem_wiId ON pendingWorkItem (wiId);
-CREATE INDEX if not exists ix_pendingWorkItem_active ON pendingWorkItem (active);
+CREATE INDEX if not exists ix_pending_work_item_wi_id ON pending_work_item (wiId);
+CREATE INDEX if not exists ix_pending_work_item_active ON pending_work_item (active);
 
 
-CREATE TABLE if not exists queueStatus
+CREATE TABLE if not exists queue_status
 ( qsId int NOT NULL,
   name text COLLATE pg_catalog."default" NOT NULL,
 
-  CONSTRAINT queueStatus_pkey PRIMARY KEY (qsId)
+  CONSTRAINT queue_status_pkey PRIMARY KEY (qsId)
 );
-insert into queueStatus (qsid, name) values (900200, 'pending');
+insert into queue_status (qsid, name) values (900200, 'pending');
 
 
 CREATE SEQUENCE if not exists queue_seq;
 CREATE TABLE if not exists queue
 (
   qId bigint NOT NULL DEFAULT nextval('queue_seq'::regclass),
-  wiId bigint NOT NULL references pendingWorkItem(piId),
-  lockedUntil timestamp without time zone null,
-  createdAt timestamp without time zone not null,
-  startedAt timestamp without time zone null,
-  doneAt timestamp without time zone null,
+  wiId bigint NOT NULL references pending_work_item(piId),
+  locked_until timestamp without time zone null,
+  created_at timestamp without time zone not null,
+  started_at timestamp without time zone null,
+  done_at timestamp without time zone null,
   active timestamp without time zone null,
-  heartbeatAt timestamp without time zone null,
-  workerName text COLLATE pg_catalog."default" NOT NULL,
-  workerInfo text COLLATE pg_catalog."default" NOT NULL,
-  cleanupDone timestamp without time zone null,
-  statusId int NOT NULL references queueStatus(qsId),
+  heartbeat_at timestamp without time zone null,
+  worker_name text COLLATE pg_catalog."default" NOT NULL,
+  worker_info text COLLATE pg_catalog."default" NOT NULL,
+  cleanup_done timestamp without time zone null,
+  status_id int NOT NULL references queue_status(qsId),
 
   CONSTRAINT queue_pkey PRIMARY KEY (qId)
 );
 CREATE INDEX if not exists ix_queue_qid ON queue (qid);
-CREATE INDEX if not exists ix_queue_lockedUntil ON queue (lockedUntil);
+CREATE INDEX if not exists ix_queue_locked_until ON queue (locked_until);
 CREATE INDEX if not exists ix_queue_active ON queue (active);
-CREATE INDEX if not exists ix_queue_heartbeatAt ON queue (heartbeatAt);
-CREATE INDEX if not exists ix_queue_cleanupDone ON queue (cleanupDone);
-CREATE INDEX if not exists ix_queue_statusId ON queue (statusId);
+CREATE INDEX if not exists ix_queue_heartbeat_at ON queue (heartbeat_at);
+CREATE INDEX if not exists ix_queue_cleanup_done ON queue (cleanup_done);
+CREATE INDEX if not exists ix_queue_status_id ON queue (status_id);
 
 
-CREATE TABLE if not exists queueLoglevel
+CREATE TABLE if not exists queue_log_level
 ( llId int NOT NULL,
   name text COLLATE pg_catalog."default" NOT NULL,
 
-  CONSTRAINT queueLogLevel_pkey PRIMARY KEY (llId)
+  CONSTRAINT queue_log_level_pkey PRIMARY KEY (llId)
 );
-insert into queueloglevel (llid, name) values (900100, 'trace');
-insert into queueloglevel (llid, name) values (900101, 'debug');
-insert into queueloglevel (llid, name) values (900102, 'info');
-insert into queueloglevel (llid, name) values (900103, 'warn');
-insert into queueloglevel (llid, name) values (900104, 'error');
+insert into queue_log_level (llid, name) values (900100, 'trace');
+insert into queue_log_level (llid, name) values (900101, 'debug');
+insert into queue_log_level (llid, name) values (900102, 'info');
+insert into queue_log_level (llid, name) values (900103, 'warn');
+insert into queue_log_level (llid, name) values (900104, 'error');
 
 
 
-CREATE SEQUENCE if not exists queueLog_seq;
-CREATE TABLE if not exists queueLog
+CREATE SEQUENCE if not exists queue_log_seq;
+CREATE TABLE if not exists queue_log
 (
-  qlId bigint NOT NULL DEFAULT nextval('queueLog_seq'::regclass),
+  qlId bigint NOT NULL DEFAULT nextval('queue_log_seq'::regclass),
   qId bigint NOT NULL references queue(qId),
-  levelId int not null references queueLogLevel(llId),
-  logTitle text COLLATE pg_catalog."default" NOT NULL,
-  logType text COLLATE pg_catalog."default" NOT NULL,
-  logDetail text COLLATE pg_catalog."default" NULL,
-  logData jsonb NULL,
-  logAt timestamp without time zone not null,
+  level_id int not null references queue_log_level(llId),
+  log_title text COLLATE pg_catalog."default" NOT NULL,
+  log_type text COLLATE pg_catalog."default" NOT NULL,
+  log_detail text COLLATE pg_catalog."default" NULL,
+  log_data jsonb NULL,
+  log_at timestamp without time zone not null,
 
-  CONSTRAINT queueLog_pkey PRIMARY KEY (qlId)
+  CONSTRAINT queue_log_pkey PRIMARY KEY (qlId)
 );
 CREATE INDEX if not exists ix_queue_qid ON queue (qid);
 
 
 -- migrate:down
-drop table queueLog;
-drop sequence queueLog_seq;
-drop table queueLogLevel;
+drop table queue_log;
+drop sequence queue_log_seq;
+drop table queue_log_level;
 drop table queue;
 drop sequence queue_seq;
-drop table queueStatus;
-drop table pendingWorkItem;
-drop sequence pendingWorkItem_seq;
-drop table workItem;
-drop sequence workItem_seq;
-drop table workItemStatus;
-drop table workType;
-drop table queueLock;
-drop table queueConfig;
+drop table queue_status;
+drop table pending_work_item;
+drop sequence pending_work_item_seq;
+drop table work_item;
+drop sequence work_item_seq;
+drop table work_item_status;
+drop table work_type;
+drop table queue_lock;
+drop table queue_config;
 

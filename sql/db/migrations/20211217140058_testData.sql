@@ -1,15 +1,15 @@
 -- migrate:up
-insert into queueConfig (systemId, requiresGlobalLock) values ('36bad147-4370-4940-a0eb-bc08c3edf212', true);
+insert into queue_config (system_id, requires_global_lock) values ('36bad147-4370-4940-a0eb-bc08c3edf212', true);
 
-insert into workType
+insert into work_type
    ( wtId
    , name
-   , systemId
-   , defaultRetries
-   , defaultBackoffSeconds
-   , defaultHeartbeatCheckPeriod
-   , defaultExecEnvironment
-   , dequeueLockPeriodSeconds
+   , system_id
+   , default_retries
+   , default_backoff_seconds
+   , default_heartbeat_check_period
+   , default_exec_environment
+   , dequeue_lock_period_seconds
    )
 values
    ( 'd20ae0bc-c8c5-476c-9486-2ab4aaf9af09'
@@ -23,5 +23,5 @@ values
    );
 
 -- migrate:down
-delete from workType where systemId = '36bad147-4370-4940-a0eb-bc08c3edf212';
-delete from queueConfig where systemId = '36bad147-4370-4940-a0eb-bc08c3edf212';
+delete from work_type where system_id = '36bad147-4370-4940-a0eb-bc08c3edf212';
+delete from queue_config where system_id = '36bad147-4370-4940-a0eb-bc08c3edf212';
