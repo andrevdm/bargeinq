@@ -38,3 +38,4 @@ data QueueCmp m = QueueCmp
   { qQueueWork:: !(PendingWorkItems -> QueueWorkItems -> m ())
   , qStartQueue :: !(SystemId -> IO QueueHandle)
   }
+

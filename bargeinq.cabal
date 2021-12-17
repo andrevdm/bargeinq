@@ -38,11 +38,25 @@ library
   exposed-modules:     Lib
                      , Components.AppCmp
                      , Components.QueueCmp
+                     , Components.PsqlCmp
+                     , Components.LogCmp
+                     , Components.DateCmp
+                     , Components.UuidCmp
                      , Impl.AppCmpIO
                      , Impl.QueueCmpIO
+                     , Impl.PsqlCmpIO
+                     , Impl.LogCmpIO
+                     , Impl.DateCmpIO
+                     , Impl.UuidCmpIO
   build-depends:       protolude
                      , text
                      , containers
+                     , raw-strings-qq
+                     , postgresql-simple
+                     , resource-pool
+                     , pretty-simple
+                     , safe-exceptions
+                     , timeit
                      , time
                      , uuid
   default-language:    Haskell2010
