@@ -1,21 +1,19 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Queue
+module Components.QueueCmp
     ( NewWorkItem(..)
     , SystemId(..)
     , WorkTypeId(..)
     , PendingWorkItems(..)
     , QueueWorkItems(..)
-    , QueueHandle
-    , queueWork
-    , startQueue
+    , QueueHandle(..)
+    , QueueCmp(..)
     ) where
 
 import           Protolude
 import           Data.Time (UTCTime)
 import           Data.UUID (UUID)
-
 
 newtype QueueHandle = QueueHandle Int deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq)
@@ -36,11 +34,7 @@ data NewWorkItem = NewWorkItem
   } deriving (Show, Eq)
 
 
-queueWork :: PendingWorkItems -> QueueWorkItems -> IO ()
-queueWork (PendingWorkItems pis) (QueuedWorkItems qis) = do
-  pass
-
-
-startQueue :: SystemId -> IO QueueHandle
-startQueue _sid = do
-  undefined
+data QueueCmp m = QueueCmp
+  { qQueueWork:: !(PendingWorkItems -> QueueWorkItems -> m ())
+  , qStartQueue :: !(SystemId -> IO QueueHandle)
+  }
