@@ -9,3 +9,9 @@ import           Protolude
 
 someFunc :: IO ()
 someFunc = putText "someFunc"
+
+
+data WorkItem = WorkItem
+  { wiId :: !Int
+
+  }

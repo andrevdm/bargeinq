@@ -18,10 +18,9 @@ CREATE TABLE if not exists queueLock
 );
 
 
-CREATE SEQUENCE if not exists workType_seq;
 CREATE TABLE if not exists workType
 (
-  wtId bigint NOT NULL DEFAULT nextval('workType_seq'::regclass),
+  wtId uuid NOT NULL,
   systemId uuid NOT NULL references queueConfig(systemId),
   name text COLLATE pg_catalog."default" NOT NULL,
   defaultRetries int NOT NULL,
@@ -49,9 +48,8 @@ CREATE SEQUENCE if not exists workItem_seq;
 CREATE TABLE if not exists workItem
 (
   wiId bigint NOT NULL DEFAULT nextval('workItem_seq'::regclass),
-  wtId bigint NOT NULL references workType(wtId),
   systemId uuid NOT NULL references queueConfig(systemId),
-  workTypeId bigint NOT NULL references workType(wtId),
+  wtId uuid NOT NULL references workType(wtId),
   ignoreUntil timestamp without time zone null,
   retriesLeft int NOT NULL,
   createdAt timestamp without time zone not null,
@@ -60,7 +58,7 @@ CREATE TABLE if not exists workItem
   groupId uuid NULL,
   dependsOnGroups uuid[] NULL,
   dependsOnWorkItem uuid[] NULL,
-  statusId int NOT NULL, --TODO
+  statusId int NOT NULL references workItemStatus(wsId),
   backoffCount int NOT NULL,
   attempts int NOT NULL,
   cleanupDone timestamp without time zone null,
@@ -160,11 +158,15 @@ CREATE INDEX if not exists ix_queue_qid ON queue (qid);
 
 -- migrate:down
 drop table queueLog;
+drop sequence queueLog_seq;
 drop table queueLogLevel;
 drop table queue;
+drop sequence queue_seq;
 drop table queueStatus;
 drop table pendingWorkItem;
+drop sequence pendingWorkItem_seq;
 drop table workItem;
+drop sequence workItem_seq;
 drop table workItemStatus;
 drop table workType;
 drop table queueLock;
