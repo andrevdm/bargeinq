@@ -9,7 +9,7 @@ module Impl.PsqlCmpIO
     , TracePg(..)
     ) where
 
-import           Verset hiding (catchJust, tryJust, throwIO)
+import           Verset
 import qualified Database.PostgreSQL.Simple as Pg
 import qualified Database.PostgreSQL.Simple.Notification as Pg
 import qualified Database.PostgreSQL.Simple.Types as Pg
@@ -123,23 +123,25 @@ checkSlowQuery lg name res =
 
 
 withTimedPool
-  :: Po.Pool Pg.Connection
+  :: forall a m.
+     (MonadUnliftIO m)
+  => Po.Pool Pg.Connection
   -> Text
   -> (Pg.Connection -> IO a)
-  -> IO (Double, a)
+  -> m (Double, a)
 withTimedPool pool _name fn =
-  Po.withResource pool (Tim.timeItT . fn)
+  liftIO $ Po.withResource pool (Tim.timeItT . fn)
 
 
 catchPsqlException
-  :: (MonadIO m)
+  :: (MonadUnliftIO m)
   => CL.LogCmp m
   -> Text
   -> Pg.Query
-  -> IO a
+  -> m a
   -> m (Either SomeException a)
 catchPsqlException lg name sql fn =
-  liftIO (UE.tryJust Just fn) >>= \case
+  UE.tryJust Just fn >>= \case
     Right r -> pure $ Right r
     Left e -> CL.logError' lg "psql error" (SqErr e name sql) >> pure (Left e)
 
