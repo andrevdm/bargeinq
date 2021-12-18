@@ -17,13 +17,19 @@ import qualified Impl.PsqlCmpIO as CPg
 import qualified Impl.UuidCmpIO as CUu
 import qualified Impl.LogCmpIO as CL
 
-mkBargeInQueue :: CQ.SystemId -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId = do
+mkBargeInQueue
+  :: CQ.SystemId
+  -> Text
+  -> CPg.TracePg
+  -> IO (CBq.BargeInQueueCmp IO)
+mkBargeInQueue sysId connStr tracePg = do
+  pool <- CPg.createPgConnPool connStr
+
   let
     dt = CDt.newDateCmpIO @IO
     uu = CUu.newUuidCmpIO @IO
     lg = CL.newLogCmpIO @IO [] dt
-    pg = CPg.newPsqlCmpIO @IO True lg
+    pg = CPg.newPsqlCmpIO @IO tracePg pool lg
     q = CQ.newQueueCmpIO @IO
     bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
   _ <- CQ.qStartQueue q sysId

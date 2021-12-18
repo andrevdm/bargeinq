@@ -5,12 +5,15 @@
 
 module Impl.PsqlCmpIO
     ( newPsqlCmpIO
+    , createPgConnPool
+    , TracePg(..)
     ) where
 
 import           Protolude hiding (catchJust, tryJust)
 import           Control.Exception.Safe (tryJust)
 import qualified Data.Pool as Po
 import qualified Data.Text as Txt
+import qualified Data.Text.Encoding as TxtE
 import qualified Database.PostgreSQL.Simple.Transaction as Pg
 import qualified Database.PostgreSQL.Simple as Pg
 import qualified System.TimeIt as Tim
@@ -19,40 +22,61 @@ import           Text.Printf (printf)
 import qualified Components.PsqlCmp as CPg
 import qualified Components.LogCmp as CL
 
+data TracePg
+  = TraceAll
+  | TraceNone
+  deriving (Show, Eq)
+
+
+createPgConnPool :: Text -> IO (Po.Pool Pg.Connection)
+createPgConnPool cstr =
+  Po.createPool
+    (Pg.connectPostgreSQL $ TxtE.encodeUtf8 cstr) -- how to create a new connection
+    Pg.close                                      -- how to close a connection
+    1                                             -- number of stripes (sub-pools)
+    60                                            -- seconds to keep a connection open
+    4                                             -- max number of connections
+
 
 newPsqlCmpIO
   :: forall m.
      (MonadIO m)
-  => Bool
+  => TracePg
+  -> Po.Pool Pg.Connection
   -> CL.LogCmp m
   -> CPg.PsqlCmp m
-newPsqlCmpIO traceMessages lg =
+newPsqlCmpIO traceFlag pool lg =
   CPg.PsqlCmp
-    { CPg.pgQuery = \pool sql q name -> do
+    { CPg.pgQuery = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:query" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.query conn sql q)
 
-    , CPg.pgQuery_ = \pool sql name -> do
+    , CPg.pgQuery_ = \sql name -> do
         when traceMessages $ CL.logDebug' lg "SQL:query_" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.query_ conn sql)
 
-    , CPg.pgExecute = \pool sql q name -> do
+    , CPg.pgExecute = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:execute" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute conn sql q)
 
-    , CPg.pgExecute_ = \pool sql name -> do
+    , CPg.pgExecute_ = \sql name -> do
         when traceMessages $ CL.logDebug' lg "SQL:execute_" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute_ conn sql)
 
-    , CPg.pgQuerySerializable = \pool sql q name -> do
+    , CPg.pgQuerySerializable = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:querySerializable" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
     }
+
+  where
+    traceMessages = traceFlag == TraceAll
+
+
 
 
 checkSlowQuery

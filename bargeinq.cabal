@@ -50,11 +50,13 @@ library
                      , Impl.UuidCmpIO
   build-depends:       protolude
                      , text
+                     , bytestring
                      , containers
                      , raw-strings-qq
                      , postgresql-simple
                      , resource-pool
                      , pretty-simple
+                     , postgresql-simple
                      , safe-exceptions
                      , timeit
                      , time

@@ -12,6 +12,7 @@ import qualified Data.UUID.V4 as UU
 
 import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ
+import qualified Impl.PsqlCmpIO as CPg
 import qualified Registry as Reg
 
 
@@ -24,9 +25,13 @@ testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 286
 
 run :: IO ()
 run = do
-  bq <- Reg.mkBargeInQueue (CQ.SystemId UU.nil)
+  bq <- Reg.mkBargeInQueue
+          (CQ.SystemId UU.nil)
+          "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable?options=--search_path%3dpublic"
+          CPg.TraceAll
 
   pend1Id <- CQ.WorkItemId <$> UU.nextRandom
+  active1Id <- CQ.WorkItemId <$> UU.nextRandom
 
   let toPending = CQ.PendingWorkItems
        [ CQ.NewWorkItem
@@ -42,7 +47,20 @@ run = do
          }
        ]
 
-  let toActive = CQ.QueueWorkItems []
+  let toActive = CQ.QueueWorkItems
+       [ CQ.NewWorkItem
+         { CQ.wiId = active1Id
+         , CQ.wiName = "active1"
+         , CQ.wiSystemId = testSysId
+         , CQ.wiWorkerType = testWorkType
+         , CQ.wiGroupId = Nothing
+         , CQ.wiDependsOnGroups = []
+         , CQ.wiDependsOnWorkItem = []
+         , CQ.wiOverrideIgnoreUntil = Nothing
+         , CQ.wiOverrideRetriesLeft = Nothing
+         }
+       ]
+
   CBq.bqQueueWork bq toPending toActive
 
   putText "\n\n----------------------"
