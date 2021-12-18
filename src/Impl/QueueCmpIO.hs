@@ -58,3 +58,4 @@ startQueue pgCmp lgCmp chanName = do
     UC.threadDelay 1000
 
   CPg.pgNotify pgCmp chanName "done"
+  CPg.pgNotify pgCmp chanName "done!!!"

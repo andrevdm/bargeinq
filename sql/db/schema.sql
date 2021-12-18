@@ -9,6 +9,19 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: fn_listen(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_listen(channel_ text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    EXECUTE format('LISTEN %I', channel_);
+END
+$$;
+
+
 SET default_tablespace = '';
 
 --
@@ -571,4 +584,5 @@ ALTER TABLE ONLY public.work_type
 INSERT INTO public.dbmate_migrations (version) VALUES
     ('20211217121058'),
     ('20211217131927'),
-    ('20211217140058');
+    ('20211217140058'),
+    ('20211218143535');
