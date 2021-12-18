@@ -8,10 +8,8 @@ module Lib
 import           Protolude
 import qualified Data.UUID as UU
 
-import qualified Components.AppCmp as CA
 import qualified Components.QueueCmp as CQ
 import qualified Registry as Reg
-import qualified Control.Applicative as UU
 
 
 testSysId :: CQ.SystemId
@@ -23,9 +21,9 @@ testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 286
 
 someFunc :: IO ()
 someFunc = do
-  app <- Reg.mkApp
+  q <- Reg.mkQueue
   putText "\n\n----------------------"
-  CA.appRun app (CQ.SystemId UU.nil)
+  CQ.qStartQueue q (CQ.SystemId UU.nil)
 
   putText "someFunc"
 

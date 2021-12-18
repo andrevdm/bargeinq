@@ -30,7 +30,7 @@ queueWork
   => CQ.PendingWorkItems
   -> CQ.QueueWorkItems
   -> m ()
-queueWork (CQ.PendingWorkItems pis) (CQ.QueuedWorkItems qis) = do
+queueWork (CQ.PendingWorkItems pws) (CQ.QueuedWorkItems qws) = do
   pass
 
 
@@ -38,6 +38,6 @@ startQueue
   :: forall m.
      (MonadIO m)
   => CQ.SystemId
-  -> m CQ.QueueHandle
+  -> m ()
 startQueue _sid = do
   undefined

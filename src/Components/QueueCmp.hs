@@ -7,7 +7,6 @@ module Components.QueueCmp
     , WorkTypeId(..)
     , PendingWorkItems(..)
     , QueueWorkItems(..)
-    , QueueHandle(..)
     , QueueCmp(..)
     ) where
 
@@ -34,8 +33,11 @@ data NewWorkItem = NewWorkItem
   } deriving (Show, Eq)
 
 
+
+
+
 data QueueCmp m = QueueCmp
   { qQueueWork:: !(PendingWorkItems -> QueueWorkItems -> m ())
-  , qStartQueue :: !(SystemId -> IO QueueHandle)
+  , qStartQueue :: !(SystemId -> m ())
   }
 
