@@ -33,9 +33,9 @@ mkBargeInQueue sysId connStr tracePg = do
   let uu = CUu.newUuidCmpIO @IO
   let lg = CL.newLogCmpIO @IO [termWriter] dt
   pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
-  let q = CQ.newQueueCmpIO @IO pg lg
+  let q = CQ.newQueueCmpIO @IO pg lg sysId
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
 
-  _ <- CQ.qStartQueue q sysId
+  _ <- CQ.qStartQueue q
 
   pure bq

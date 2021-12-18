@@ -27,7 +27,7 @@ testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 286
 run :: IO ()
 run = do
   bq <- Bq.mkBargeInQueue
-          (CQ.SystemId UU.nil)
+          testSysId
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceAll
 

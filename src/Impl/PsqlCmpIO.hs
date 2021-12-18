@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Impl.PsqlCmpIO
     ( newPsqlCmpIO
@@ -52,7 +53,8 @@ createPgConnPool maxConns keepOpenSecs cstr =
 newPsqlCmpIO
   :: forall m.
      (MonadUnliftIO m)
-  => TracePg -> Text
+  => TracePg
+  -> Text
   -> CL.LogCmp m
   -> m (CPg.PsqlCmp m)
 newPsqlCmpIO traceFlag connStr lg = do
@@ -85,10 +87,31 @@ newPsqlCmpIO traceFlag connStr lg = do
           catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
 
     , CPg.pgListenForNotifications = runListenForNotifications lg connStr
+    , CPg.pgNotify = runNotify lg poolQuery traceFlag
     }
 
   where
     traceMessages = traceFlag == TraceAll
+
+
+runNotify
+  :: forall m.
+     (MonadUnliftIO m)
+  => CL.LogCmp m
+  -> Po.Pool Pg.Connection
+  -> TracePg
+  -> CPg.ChanName
+  -> Text
+  -> m ()
+runNotify lg pool traceFlag (CPg.ChanName chanName) s = do
+  when (traceFlag == TraceAll) $ CL.logDebug' lg "SQL:notify" (chanName <> ": " <> s)
+  let name = "notify"
+  let sql = Pg.Query . TxtE.encodeUtf8 $ "select null from pg_notify(?, ?)"
+  _ <- checkSlowQuery lg name =<<
+    catchPsqlException lg name sql (withTimedPool pool name $ \conn -> do
+      _ :: [Pg.Only Pg.Null] <- Pg.query conn sql (chanName, s) -- run NOTIFY
+      pass)
+  pass
 
 
 runListenForNotifications
@@ -96,10 +119,10 @@ runListenForNotifications
      (MonadUnliftIO m)
   => CL.LogCmp m
   -> Text
-  -> Text
+  -> CPg.ChanName
   -> (Pg.Notification -> m ())
   -> m ()
-runListenForNotifications lg connStr chanName fn = do
+runListenForNotifications lg connStr (CPg.ChanName chanName) fn = do
   void . UA.async $ retry (0 :: Int)
 
   where

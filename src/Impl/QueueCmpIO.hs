@@ -7,6 +7,8 @@ module Impl.QueueCmpIO
     ) where
 
 import           Verset hiding (threadDelay)
+import qualified Data.Text as Txt
+import qualified Data.UUID as UU
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
@@ -21,11 +23,13 @@ newQueueCmpIO
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CL.LogCmp m
+  -> CQ.SystemId
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp =
+newQueueCmpIO pgCmp lgCmp (CQ.SystemId sid) = do
+  let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sid)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue pgCmp lgCmp
+    , CQ.qStartQueue = startQueue pgCmp lgCmp chan
     }
 
 
@@ -44,10 +48,13 @@ startQueue
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CL.LogCmp m
-  -> CQ.SystemId
+  -> CPg.ChanName
   -> m ()
-startQueue pgCmp lgCmp _sid = do
-  CPg.pgListenForNotifications pgCmp "test" (CL.logDebug' lgCmp "LISTEN> ")
+startQueue pgCmp lgCmp chanName = do
+  CPg.pgListenForNotifications pgCmp chanName (CL.logDebug' lgCmp "LISTEN> ")
+  CPg.pgNotify pgCmp chanName "text"
 
   void . UA.async . forever $ do
     UC.threadDelay 1000
+
+  CPg.pgNotify pgCmp chanName "done"

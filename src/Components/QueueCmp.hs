@@ -37,7 +37,7 @@ data NewWorkItem = NewWorkItem
 
 
 data QueueCmp m = QueueCmp
-  { qStartQueue :: !(SystemId -> m ())
+  { qStartQueue :: !(m ())
   , qQueueWork :: !(PendingWorkItems -> QueueWorkItems -> m ())
   }
 
