@@ -50,8 +50,10 @@ library
                      , Impl.UuidCmpIO
                      , BargeInQueue
   build-depends:       verset
+                     , ansi-terminal
                      , text
                      , bytestring
+                     , colour
                      , containers
                      , raw-strings-qq
                      , postgresql-simple
@@ -59,6 +61,8 @@ library
                      , pretty-simple
                      , postgresql-simple
                      , safe-exceptions
+                     , stm
+                     , stm-chans
                      , timeit
                      , time
                      , unliftio

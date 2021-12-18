@@ -1,15 +1,23 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Impl.LogCmpIO
     ( newLogCmpIO
+    , createQueueLogWriter
+    , startTerminalPrinter
     ) where
 
-import           Verset hiding (catchJust, tryJust, log)
+import           Verset hiding (log)
+import           Control.Concurrent.STM (atomically)
+import           Control.Concurrent.STM.TBMQueue (TBMQueue, writeTBMQueue, readTBMQueue)
+import qualified Data.Colour.Names as Clr
+import qualified Data.Text as Txt
+import qualified Data.Time as DT
 import qualified Data.Text.Lazy as TxtL
 import qualified Text.Pretty.Simple as Pp
+import qualified System.Console.ANSI as An
 
 import qualified Components.DateCmp as CDt
 import qualified Components.LogCmp as CL
@@ -38,7 +46,7 @@ newLogCmpIO logWriters dt =
   where
     log lvl m s = do
       dt' <- CDt.dtGetLocalDate dt
-      for_ logWriters $ \w -> CL.writeLog w dt' lvl m s
+      for_ logWriters $ \w -> CL.writeLog w (CL.LogEntry dt' lvl m s)
 
 
 ptnShow :: (Show a) => a -> Text
@@ -56,3 +64,33 @@ opts =
     , Pp.outputOptionsStringStyle = Pp.EscapeNonPrintable
     , Pp.outputOptionsColorOptions = Just Pp.defaultColorOptionsDarkBg
     }
+
+
+createQueueLogWriter
+  :: forall m.
+    (MonadIO m)
+  => TBMQueue CL.LogEntry
+  -> CL.LogWriter m
+createQueueLogWriter q =
+  CL.LogWriter { CL.writeLog = liftIO . atomically . writeTBMQueue q}
+
+
+startTerminalPrinter
+  :: forall m.
+     (MonadIO m)
+  => TBMQueue CL.LogEntry
+  -> m ()
+startTerminalPrinter q = do
+  void . liftIO . forkIO . forever $
+    atomically (readTBMQueue q) >>= \case
+      Nothing -> pass
+      Just ((CL.LogEntry at level s d)) -> do
+        An.setSGR $ case level of
+                      CL.LevelError -> [An.SetColor An.Foreground An.Vivid An.Red]
+                      CL.LevelWarn -> [An.SetColor An.Foreground An.Vivid An.Yellow]
+                      CL.LevelInfo -> [An.SetColor An.Foreground An.Vivid An.Cyan]
+                      CL.LevelDebug -> [An.SetRGBColor An.Foreground Clr.dimgrey]
+                      CL.LevelTest -> [An.SetRGBColor An.Foreground Clr.pink]
+        let dt = DT.formatTime DT.defaultTimeLocale "%Y-%m-%d %H:%M:%S.%q: " at
+        putText $ Txt.pack dt <> s <> "  " <> d
+        An.setSGR [An.Reset]

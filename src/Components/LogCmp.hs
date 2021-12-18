@@ -6,6 +6,7 @@ module Components.LogCmp
     ( LogCmp(..)
     , LogLevel(..)
     , LogWriter(..)
+    , LogEntry(..)
     , logLevelToId
     , logLevelToText
     ) where
@@ -41,8 +42,10 @@ logLevelToId LevelError = 5
 
 newtype LogWriter m =
   LogWriter
-    { writeLog :: DT.LocalTime -> LogLevel -> Text -> Text -> m ()
+    { writeLog :: LogEntry -> m ()
     }
+
+data LogEntry = LogEntry DT.LocalTime LogLevel Text Text deriving (Show, Eq)
 
 
 data LogCmp m = LogBaseCmp
