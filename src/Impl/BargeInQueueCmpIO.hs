@@ -2,20 +2,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Impl.AppCmpIO
-    ( newAppCmpIO
+module Impl.BargeInQueueCmpIO
+    ( newBargeInQueueCmpIO
     ) where
 
 import           Protolude
 
-import qualified Components.AppCmp as CA
+import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ
 import qualified Components.DateCmp as CDt
 import qualified Components.PsqlCmp as CPg
 import qualified Components.UuidCmp as CUu
 import qualified Components.LogCmp as CL
 
-newAppCmpIO
+newBargeInQueueCmpIO
   :: forall m.
      (Monad m)
   => CQ.QueueCmp m
@@ -23,9 +23,9 @@ newAppCmpIO
   -> CUu.UuidCmp m
   -> CL.LogCmp m
   -> CPg.PsqlCmp m
-  -> CA.AppCmp m
-newAppCmpIO qCmp dtCmp uuCmp lgCmp pgCmp =
-  CA.AppCmp
-    { CA.appRunQueue = CQ.qStartQueue qCmp
+  -> CBq.BargeInQueueCmp m
+newBargeInQueueCmpIO qCmp dtCmp uuCmp lgCmp pgCmp =
+  CBq.BargeInQueueCmp
+    { CBq.bqQueueWork = CQ.qQueueWork qCmp
     }
 

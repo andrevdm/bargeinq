@@ -3,28 +3,28 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Registry
-    ( mkApp
+    ( mkBargeInQueue
     ) where
 
 import           Protolude
 
-import qualified Components.AppCmp as CA
+import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ
-import qualified Impl.AppCmpIO as CA
+import qualified Impl.BargeInQueueCmpIO as CBq
 import qualified Impl.DateCmpIO as CDt
 import qualified Impl.QueueCmpIO as CQ
 import qualified Impl.PsqlCmpIO as CPg
 import qualified Impl.UuidCmpIO as CUu
 import qualified Impl.LogCmpIO as CL
 
-mkApp :: CQ.SystemId -> IO (CA.AppCmp IO)
-mkApp sysId = do
+mkBargeInQueue :: CQ.SystemId -> IO (CBq.BargeInQueueCmp IO)
+mkBargeInQueue sysId = do
   let
     dt = CDt.newDateCmpIO @IO
     uu = CUu.newUuidCmpIO @IO
     lg = CL.newLogCmpIO @IO [] dt
     pg = CPg.newPsqlCmpIO @IO True lg
     q = CQ.newQueueCmpIO @IO
-    app = CA.newAppCmpIO q dt uu lg pg
+    bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
   _ <- CQ.qStartQueue q sysId
-  pure app
+  pure bq

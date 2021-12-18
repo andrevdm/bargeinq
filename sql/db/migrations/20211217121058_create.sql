@@ -48,6 +48,7 @@ CREATE TABLE if not exists work_item
 (
   wiid uuid NOT NULL,
   system_id uuid NOT NULL references queue_config(system_id),
+  name text COLLATE pg_catalog."default" NOT NULL,
   wtid uuid NOT NULL references work_type(wtId),
   ignore_until timestamp without time zone null,
   retries_left int NOT NULL,

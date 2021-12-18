@@ -33,7 +33,7 @@ queueWork
   => CQ.PendingWorkItems
   -> CQ.QueueWorkItems
   -> m ()
-queueWork (CQ.PendingWorkItems pws) (CQ.QueuedWorkItems qws) = do
+queueWork (CQ.PendingWorkItems pws) (CQ.QueueWorkItems qws) = do
   pass
 
 

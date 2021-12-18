@@ -174,6 +174,7 @@ CREATE TABLE public.queue_status (
 CREATE TABLE public.work_item (
     wiid uuid NOT NULL,
     system_id uuid NOT NULL,
+    name text NOT NULL,
     wtid uuid NOT NULL,
     ignore_until timestamp without time zone,
     retries_left integer NOT NULL,
