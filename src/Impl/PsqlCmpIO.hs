@@ -2,22 +2,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Impl.PsqlCmpIO
     ( newPsqlCmpIO
-    , createPgConnPool
     , TracePg(..)
     ) where
 
-import           Protolude hiding (catchJust, tryJust)
-import           Control.Exception.Safe (tryJust)
+import           Protolude hiding (catchJust, tryJust, throwIO)
+import qualified Database.PostgreSQL.Simple as Pg
+import qualified Database.PostgreSQL.Simple.Notification as Pg
+import qualified Database.PostgreSQL.Simple.Transaction as Pg
 import qualified Data.Pool as Po
 import qualified Data.Text as Txt
 import qualified Data.Text.Encoding as TxtE
-import qualified Database.PostgreSQL.Simple.Transaction as Pg
-import qualified Database.PostgreSQL.Simple as Pg
+import qualified Data.Time as DT
 import qualified System.TimeIt as Tim
 import           Text.Printf (printf)
+import           UnliftIO (MonadUnliftIO)
+import qualified UnliftIO.Async as UA
+import qualified UnliftIO.Exception as UE
 
 import qualified Components.PsqlCmp as CPg
 import qualified Components.LogCmp as CL
@@ -28,55 +32,97 @@ data TracePg
   deriving (Show, Eq)
 
 
-createPgConnPool :: Text -> IO (Po.Pool Pg.Connection)
-createPgConnPool cstr =
-  Po.createPool
+createPgConnPool
+  :: (MonadUnliftIO m)
+  => Int
+  -> DT.NominalDiffTime
+  -> Text
+  -> m (Po.Pool Pg.Connection)
+createPgConnPool maxConns keepOpenSecs cstr =
+  liftIO $ Po.createPool
     (Pg.connectPostgreSQL $ TxtE.encodeUtf8 cstr) -- how to create a new connection
     Pg.close                                      -- how to close a connection
     1                                             -- number of stripes (sub-pools)
-    60                                            -- seconds to keep a connection open
-    4                                             -- max number of connections
+    keepOpenSecs                                  -- seconds to keep a connection open
+    maxConns                                      -- max number of connections
 
 
 newPsqlCmpIO
   :: forall m.
-     (MonadIO m)
+     (MonadUnliftIO m)
   => TracePg
-  -> Po.Pool Pg.Connection
+  -> Text
   -> CL.LogCmp m
-  -> CPg.PsqlCmp m
-newPsqlCmpIO traceFlag pool lg =
-  CPg.PsqlCmp
+  -> m (CPg.PsqlCmp m)
+newPsqlCmpIO traceFlag connStr lg = do
+  poolQuery <- createPgConnPool 4 60 connStr
+  poolNotify <- createPgConnPool 2 180 connStr
+
+  pure CPg.PsqlCmp
     { CPg.pgQuery = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:query" sql
         checkSlowQuery lg name =<<
-          catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.query conn sql q)
+          catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.query conn sql q)
 
     , CPg.pgQuery_ = \sql name -> do
         when traceMessages $ CL.logDebug' lg "SQL:query_" sql
         checkSlowQuery lg name =<<
-          catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.query_ conn sql)
+          catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.query_ conn sql)
 
-    , CPg.pgExecute = \sql q name -> do
-        when traceMessages $ CL.logDebug' lg "SQL:execute" sql
-        checkSlowQuery lg name =<<
-          catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute conn sql q)
-
-    , CPg.pgExecute_ = \sql name -> do
-        when traceMessages $ CL.logDebug' lg "SQL:execute_" sql
-        checkSlowQuery lg name =<<
-          catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute_ conn sql)
+    , CPg.pgExecute = pgExec traceFlag lg poolQuery
+    , CPg.pgExecute_ = pgExec_ traceFlag lg poolQuery
 
     , CPg.pgQuerySerializable = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:querySerializable" sql
         checkSlowQuery lg name =<<
-          catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
+          catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
+
+    , CPg.pgGetNotification =
+        liftIO . Po.withResource poolNotify $ Pg.getNotification
+
+    , CPg.pgListenForNotifications = \chanName fn -> do
+      --pgExec_ traceFlag lg poolNotify (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) "listen" >>= \case
+      pgExec traceFlag lg poolNotify "LISTEN ?" (Pg.Only chanName) "listen" >>= \case
+        Left e -> UE.throwIO e
+        Right _ -> pass
+
+      void . UA.async . forever $ do
+        n <- catchPsqlException lg "notify.fetch" "notify.fetch" $ Po.withResource poolNotify Pg.getNotification
+        fn n
     }
 
   where
     traceMessages = traceFlag == TraceAll
 
 
+pgExec
+  :: forall m q.
+     (MonadUnliftIO m, Pg.ToRow q)
+  => TracePg
+  -> CL.LogCmp m
+  -> Po.Pool Pg.Connection
+  -> Pg.Query
+  -> q
+  -> Text
+  -> m (Either SomeException Int64)
+pgExec t lg pool sql q name = do
+  when (t == TraceAll) $ CL.logDebug' lg "SQL:execute" sql
+  checkSlowQuery lg name =<<
+    catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute conn sql q)
+
+
+pgExec_
+  :: (MonadUnliftIO m)
+  => TracePg
+  -> CL.LogCmp m
+  -> Po.Pool Pg.Connection
+  -> Pg.Query
+  -> Text
+  -> m (Either SomeException Int64)
+pgExec_ t lg pool sql name = do
+  when (t == TraceAll) $ CL.logDebug' lg "SQL:execute_" sql
+  checkSlowQuery lg name =<<
+    catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute_ conn sql)
 
 
 checkSlowQuery
@@ -110,10 +156,10 @@ catchPsqlException
   => CL.LogCmp m
   -> Text
   -> Pg.Query
-  -> IO (Double, a)
-  -> m (Either SomeException (Double, a))
+  -> IO a
+  -> m (Either SomeException a)
 catchPsqlException lg name sql fn =
-  liftIO (tryJust Just fn) >>= \case
+  liftIO (UE.tryJust Just fn) >>= \case
     Right r -> pure $ Right r
     Left e -> CL.logError' lg "psql error" (SqErr e name sql) >> pure (Left e)
 

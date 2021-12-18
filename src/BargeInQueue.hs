@@ -23,15 +23,12 @@ mkBargeInQueue
   -> CPg.TracePg
   -> IO (CBq.BargeInQueueCmp IO)
 mkBargeInQueue sysId connStr tracePg = do
-  pool <- CPg.createPgConnPool connStr
-
-  let
-    dt = CDt.newDateCmpIO @IO
-    uu = CUu.newUuidCmpIO @IO
-    lg = CL.newLogCmpIO @IO [] dt
-    pg = CPg.newPsqlCmpIO @IO tracePg pool lg
-    q = CQ.newQueueCmpIO @IO
-    bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
+  let dt = CDt.newDateCmpIO @IO
+  let uu = CUu.newUuidCmpIO @IO
+  let lg = CL.newLogCmpIO @IO [] dt
+  pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
+  let q = CQ.newQueueCmpIO @IO pg
+  let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
   _ <- CQ.qStartQueue q sysId
 
   pure bq

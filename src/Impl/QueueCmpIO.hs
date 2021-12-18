@@ -13,17 +13,19 @@ import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
 
+import qualified Components.PsqlCmp as CPg
 import qualified Components.QueueCmp as CQ
 
 
 newQueueCmpIO
   :: forall m.
      (MonadUnliftIO m)
-  => CQ.QueueCmp m
-newQueueCmpIO =
+  => CPg.PsqlCmp m
+  -> CQ.QueueCmp m
+newQueueCmpIO pgCmp =
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue
+    , CQ.qStartQueue = startQueue pgCmp
     }
 
 
@@ -40,8 +42,12 @@ queueWork (CQ.PendingWorkItems pws) (CQ.QueueWorkItems qws) = do
 startQueue
   :: forall m.
      (MonadUnliftIO m)
-  => CQ.SystemId
-  -> m (UA.Async ())
-startQueue _sid = UA.async . forever $ do
-  UC.threadDelay 1000
-  pass
+  => CPg.PsqlCmp m
+  -> CQ.SystemId
+  -> m ()
+startQueue pgCmp _sid = do
+  void . UA.async . forever $
+    CPg.pgListenForNotifications pgCmp "test" print
+
+  void . UA.async . forever $ do
+    UC.threadDelay 1000
