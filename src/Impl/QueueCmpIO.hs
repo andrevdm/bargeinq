@@ -58,7 +58,7 @@ startQueue pgCmp lgCmp chanName = do
     CL.logDebug' lgCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPoll pollGate tryGetActiveItem
+  void . UA.async $ runPollLoop pollGate tryGetActiveItem
   void . UA.async $ runTriggerPoll 10 pollGate --TODO get poll period
 
 
@@ -73,13 +73,13 @@ tryGetActiveItem = do
 
 
 -- | Main poll loop. Calls `fn` when it is time to poll
-runPoll
+runPollLoop
   :: forall m.
      (MonadUnliftIO m)
   => Th.Gate
   -> m Bool
   -> m ()
-runPoll gate fn = forever $ do
+runPollLoop gate fn = forever $ do
   Th.waitForOpenGateAndClose gate
   runFetch
 
@@ -87,7 +87,6 @@ runPoll gate fn = forever $ do
     runFetch = do
       putText "polling"
       gotItem <- fn
-
       -- If there is an item then there is probably another, try again immediately
       when gotItem runFetch
 
