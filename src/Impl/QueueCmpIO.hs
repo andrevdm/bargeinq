@@ -7,8 +7,6 @@ module Impl.QueueCmpIO
     ) where
 
 import           Verset hiding (threadDelay)
-import           Data.Time (UTCTime)
-import           Data.UUID (UUID)
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
@@ -46,8 +44,7 @@ startQueue
   -> CQ.SystemId
   -> m ()
 startQueue pgCmp _sid = do
-  void . UA.async . forever $
-    CPg.pgListenForNotifications pgCmp "test" print
+  CPg.pgListenForNotifications pgCmp "test" print
 
   void . UA.async . forever $ do
     UC.threadDelay 1000

@@ -18,6 +18,5 @@ data PsqlCmp m =
     , pgExecute :: forall q. (ToRow q) => Pg.Query -> q -> Text -> m (Either SomeException Int64)
     , pgExecute_ :: Pg.Query -> Text -> m (Either SomeException Int64)
     , pgQuerySerializable :: forall q r. (Pg.ToRow q, Pg.FromRow r) => Pg.Query -> q -> Text -> m (Either SomeException [r])
-    , pgGetNotification :: m Pg.Notification
     , pgListenForNotifications :: Text -> (Either SomeException Pg.Notification -> m ()) -> m ()
     }

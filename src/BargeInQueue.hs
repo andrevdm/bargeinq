@@ -29,6 +29,8 @@ mkBargeInQueue sysId connStr tracePg = do
   pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
   let q = CQ.newQueueCmpIO @IO pg
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
+
+  putText "!!Start"
   _ <- CQ.qStartQueue q sysId
 
   pure bq

@@ -12,6 +12,7 @@ module Impl.PsqlCmpIO
 import           Verset hiding (catchJust, tryJust, throwIO)
 import qualified Database.PostgreSQL.Simple as Pg
 import qualified Database.PostgreSQL.Simple.Notification as Pg
+import qualified Database.PostgreSQL.Simple.Types as Pg
 import qualified Database.PostgreSQL.Simple.Transaction as Pg
 import qualified Data.Pool as Po
 import qualified Data.Text as Txt
@@ -50,8 +51,7 @@ createPgConnPool maxConns keepOpenSecs cstr =
 newPsqlCmpIO
   :: forall m.
      (MonadUnliftIO m)
-  => TracePg
-  -> Text
+  => TracePg -> Text
   -> CL.LogCmp m
   -> m (CPg.PsqlCmp m)
 newPsqlCmpIO traceFlag connStr lg = do
@@ -69,60 +69,40 @@ newPsqlCmpIO traceFlag connStr lg = do
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.query_ conn sql)
 
-    , CPg.pgExecute = pgExec traceFlag lg poolQuery
-    , CPg.pgExecute_ = pgExec_ traceFlag lg poolQuery
+    , CPg.pgExecute = \sql q name -> do
+        when traceMessages $ CL.logDebug' lg "SQL:execute" sql
+        checkSlowQuery lg name =<<
+          catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.execute conn sql q)
+
+    , CPg.pgExecute_ = \sql name -> do
+        when traceMessages $ CL.logDebug' lg "SQL:execute_" sql
+        checkSlowQuery lg name =<<
+          catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.execute_ conn sql)
 
     , CPg.pgQuerySerializable = \sql q name -> do
         when traceMessages $ CL.logDebug' lg "SQL:querySerializable" sql
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
 
-    , CPg.pgGetNotification =
-        liftIO . Po.withResource poolNotify $ Pg.getNotification
-
-    , CPg.pgListenForNotifications = \chanName fn -> do
-      --pgExec_ traceFlag lg poolNotify (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) "listen" >>= \case
-      pgExec traceFlag lg poolNotify "LISTEN ?" (Pg.Only chanName) "listen" >>= \case
-        Left e -> UE.throwIO e
-        Right _ -> pass
-
-      void . UA.async . forever $ do
-        n <- catchPsqlException lg "notify.fetch" "notify.fetch" $ Po.withResource poolNotify Pg.getNotification
-        fn n
+    , CPg.pgListenForNotifications = runListenForNotifications
     }
 
   where
     traceMessages = traceFlag == TraceAll
 
 
-pgExec
-  :: forall m q.
-     (MonadUnliftIO m, Pg.ToRow q)
-  => TracePg
-  -> CL.LogCmp m
-  -> Po.Pool Pg.Connection
-  -> Pg.Query
-  -> q
-  -> Text
-  -> m (Either SomeException Int64)
-pgExec t lg pool sql q name = do
-  when (t == TraceAll) $ CL.logDebug' lg "SQL:execute" sql
-  checkSlowQuery lg name =<<
-    catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute conn sql q)
+runListenForNotifications :: Text -> (Either SomeException Pg.Notification -> m ()) -> m ()
+runListenForNotifications chanName fn = do
+  undefined
+  --pgExec_ traceFlag lg poolNotify (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) "listen" >>= \case
+  ----pgExec traceFlag lg poolNotify "LISTEN ?" (Pg.Only chanName) "listen" >>= \case
+  --  Left e -> UE.throwIO e
+  --  Right _ -> pass
 
-
-pgExec_
-  :: (MonadUnliftIO m)
-  => TracePg
-  -> CL.LogCmp m
-  -> Po.Pool Pg.Connection
-  -> Pg.Query
-  -> Text
-  -> m (Either SomeException Int64)
-pgExec_ t lg pool sql name = do
-  when (t == TraceAll) $ CL.logDebug' lg "SQL:execute_" sql
-  checkSlowQuery lg name =<<
-    catchPsqlException lg name sql (withTimedPool pool name $ \conn -> Pg.execute_ conn sql)
+  --void . UA.async . forever $ do
+  --  putText "psql.listen"
+  --  n <- catchPsqlException lg "notify.fetch" "notify.fetch" $ Po.withResource poolNotify Pg.getNotification
+  --  fn n
 
 
 checkSlowQuery
