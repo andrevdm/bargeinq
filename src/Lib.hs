@@ -13,7 +13,7 @@ import qualified Data.UUID.V4 as UU
 import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ
 import qualified Impl.PsqlCmpIO as CPg
-import qualified Registry as Reg
+import qualified BargeInQueue as Bq
 
 
 testSysId :: CQ.SystemId
@@ -25,7 +25,7 @@ testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 286
 
 run :: IO ()
 run = do
-  bq <- Reg.mkBargeInQueue
+  bq <- Bq.mkBargeInQueue
           (CQ.SystemId UU.nil)
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable?options=--search_path%3dpublic"
           CPg.TraceAll

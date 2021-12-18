@@ -48,6 +48,7 @@ library
                      , Impl.LogCmpIO
                      , Impl.DateCmpIO
                      , Impl.UuidCmpIO
+                     , BargeInQueue
   build-depends:       protolude
                      , text
                      , bytestring

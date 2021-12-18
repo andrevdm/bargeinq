@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Registry
+module BargeInQueue
     ( mkBargeInQueue
     ) where
 
