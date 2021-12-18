@@ -52,10 +52,7 @@ startQueue
   -> m ()
 startQueue pgCmp lgCmp chanName = do
   CPg.pgListenForNotifications pgCmp chanName (CL.logDebug' lgCmp "LISTEN> ")
-  CPg.pgNotify pgCmp chanName "text"
 
   void . UA.async . forever $ do
     UC.threadDelay 1000
 
-  CPg.pgNotify pgCmp chanName "done"
-  CPg.pgNotify pgCmp chanName "done!!!"

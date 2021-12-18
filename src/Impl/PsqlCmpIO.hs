@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Impl.PsqlCmpIO
     ( newPsqlCmpIO
@@ -30,7 +29,8 @@ import qualified Components.PsqlCmp as CPg
 import qualified Components.LogCmp as CL
 
 data TracePg
-  = TraceAll
+  = TraceStandard
+  | TraceAll
   | TraceNone
   deriving (Show, Eq)
 
@@ -86,12 +86,12 @@ newPsqlCmpIO traceFlag connStr lg = do
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
 
-    , CPg.pgListenForNotifications = runListenForNotifications lg connStr
+    , CPg.pgListenForNotifications = runListenForNotifications lg connStr traceFlag
     , CPg.pgNotify = runNotify lg poolQuery traceFlag
     }
 
   where
-    traceMessages = traceFlag == TraceAll
+    traceMessages = traceFlag /= TraceNone
 
 
 runNotify
@@ -119,10 +119,11 @@ runListenForNotifications
      (MonadUnliftIO m)
   => CL.LogCmp m
   -> Text
+  -> TracePg
   -> CPg.ChanName
   -> (Pg.Notification -> m ())
   -> m ()
-runListenForNotifications lg connStr (CPg.ChanName chanName) fn = do
+runListenForNotifications lg connStr traceFlag (CPg.ChanName chanName) fn = do
   void . UA.async $ retry (0 :: Int)
 
   where
@@ -146,8 +147,7 @@ runListenForNotifications lg connStr (CPg.ChanName chanName) fn = do
         (silent . liftIO . Pg.close)
         (\conn -> do
           let sql = "select null from fn_listen(?)"
-          CL.logDebug' lg "LISTEN: running LISTEN on new connection" (sql, chanName)
-          -- _ <- liftIO $ Pg.execute_ conn (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) -- run LISTEN command for the new connection
+          when (traceFlag == TraceAll) $ CL.logDebug' lg "LISTEN: running LISTEN on new connection" (sql, chanName)
           _ :: [Pg.Only Pg.Null] <- liftIO $ Pg.query conn sql (Pg.Only chanName) -- run LISTEN (fn_list just makes the chan name a param)
           forever $ runListen conn
         )
