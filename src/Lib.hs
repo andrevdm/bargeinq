@@ -1,8 +1,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Lib
-    ( someFunc
+    ( run
     ) where
 
 import           Protolude
@@ -19,12 +20,17 @@ testWorkType :: CQ.WorkTypeId
 testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 2868489993
 
 
-someFunc :: IO ()
-someFunc = do
+run :: IO ()
+run = do
   q <- Reg.mkQueue
   putText "\n\n----------------------"
   _ <- CQ.qStartQueue q (CQ.SystemId UU.nil)
+  loop
 
-  putText "someFunc"
+  where
+    loop = do
+      getLine >>= \case
+        "q" -> pass
+        _ -> loop
 
 

@@ -7,4 +7,4 @@ import           Protolude
 import qualified Lib
 
 main :: IO ()
-main = Lib.someFunc
+main = Lib.run
