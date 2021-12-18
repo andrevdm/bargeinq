@@ -22,6 +22,21 @@ END
 $$;
 
 
+--
+-- Name: fn_queue_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_queue_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('c' || REPLACE(CAST('qId' AS text), '-', ''), 'trigger');
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 --
@@ -202,18 +217,6 @@ CREATE TABLE public.work_item (
     attempts integer NOT NULL,
     cleanup_done timestamp without time zone
 );
-
-
---
--- Name: work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.work_item_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
 
 
 --
@@ -486,6 +489,20 @@ CREATE INDEX ix_work_type_system_id ON public.work_type USING btree (system_id);
 
 
 --
+-- Name: queue tg_queue_insert_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tg_queue_insert_notify AFTER INSERT ON public.queue FOR EACH ROW EXECUTE PROCEDURE public.fn_queue_notify();
+
+
+--
+-- Name: queue tg_queue_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tg_queue_update_notify AFTER UPDATE ON public.queue FOR EACH ROW EXECUTE PROCEDURE public.fn_queue_notify();
+
+
+--
 -- Name: pending_work_item pending_work_item_parent_pending_worker_item_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -586,4 +603,5 @@ INSERT INTO public.dbmate_migrations (version) VALUES
     ('20211217121058'),
     ('20211217131927'),
     ('20211217140058'),
-    ('20211218143535');
+    ('20211218143535'),
+    ('20211218155829');
