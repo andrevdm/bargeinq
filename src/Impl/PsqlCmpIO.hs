@@ -22,6 +22,7 @@ import qualified System.TimeIt as Tim
 import           Text.Printf (printf)
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
+import qualified UnliftIO.Concurrent as UC
 import qualified UnliftIO.Exception as UE
 
 import qualified Components.PsqlCmp as CPg
@@ -56,7 +57,6 @@ newPsqlCmpIO
   -> m (CPg.PsqlCmp m)
 newPsqlCmpIO traceFlag connStr lg = do
   poolQuery <- createPgConnPool 4 60 connStr
-  poolNotify <- createPgConnPool 2 180 connStr
 
   pure CPg.PsqlCmp
     { CPg.pgQuery = \sql q name -> do
@@ -84,25 +84,55 @@ newPsqlCmpIO traceFlag connStr lg = do
         checkSlowQuery lg name =<<
           catchPsqlException lg name sql (withTimedPool poolQuery name $ \conn -> Pg.withTransactionSerializable conn (Pg.query conn sql q))
 
-    , CPg.pgListenForNotifications = runListenForNotifications
+    , CPg.pgListenForNotifications = runListenForNotifications lg connStr
     }
 
   where
     traceMessages = traceFlag == TraceAll
 
 
-runListenForNotifications :: Text -> (Either SomeException Pg.Notification -> m ()) -> m ()
-runListenForNotifications chanName fn = do
-  undefined
-  --pgExec_ traceFlag lg poolNotify (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) "listen" >>= \case
-  ----pgExec traceFlag lg poolNotify "LISTEN ?" (Pg.Only chanName) "listen" >>= \case
-  --  Left e -> UE.throwIO e
-  --  Right _ -> pass
+runListenForNotifications
+  :: forall m.
+     (MonadUnliftIO m)
+  => CL.LogCmp m
+  -> Text
+  -> Text
+  -> (Pg.Notification -> m ())
+  -> m ()
+runListenForNotifications lg connStr chanName fn = do
+  void . UA.async $ retry (0 :: Int)
 
-  --void . UA.async . forever $ do
-  --  putText "psql.listen"
-  --  n <- catchPsqlException lg "notify.fetch" "notify.fetch" $ Po.withResource poolNotify Pg.getNotification
-  --  fn n
+  where
+    backoff = [1, 2, 10, 30 :: Int]
+    retry r = do
+      when (r > 0) $ do
+        let b = fromMaybe 60 (atMay backoff r)
+        CL.logDebug lg $ "LISTEN: backoff pause seconds = " <> show b
+        UC.threadDelay (1000000 * b)
+
+      void $ UE.catch
+        runConnect
+        (\(e :: SomeException) -> do
+          CL.logWarn' lg "Exception listening for notifications" e
+          retry $ r + 1
+        )
+
+    runConnect = do
+      UE.bracket
+        (liftIO . Pg.connectPostgreSQL $ TxtE.encodeUtf8 connStr)
+        (silent . liftIO . Pg.close)
+        (\conn -> do
+          CL.logDebug lg "LISTEN: running LISTEN on new connection"
+          _ <- liftIO $ Pg.execute_ conn (Pg.Query . TxtE.encodeUtf8 $ "LISTEN " <> chanName) -- run LISTEN command for the new connection
+          forever $ runListen conn
+        )
+
+    silent f =
+      UE.catch f (\(_ :: SomeException) -> pass)
+
+    runListen conn = do
+      n <- liftIO $ Pg.getNotification conn
+      fn n
 
 
 checkSlowQuery
