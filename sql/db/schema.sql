@@ -238,7 +238,8 @@ CREATE TABLE public.work_type (
     default_backoff_seconds integer[] NOT NULL,
     default_heartbeat_check_period integer,
     default_exec_environment text NOT NULL,
-    dequeue_lock_period_seconds integer NOT NULL
+    dequeue_lock_period_seconds integer NOT NULL,
+    poll_period_seconds integer NOT NULL
 );
 
 

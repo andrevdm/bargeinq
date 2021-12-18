@@ -10,6 +10,7 @@ insert into work_type
    , default_heartbeat_check_period
    , default_exec_environment
    , dequeue_lock_period_seconds
+   , poll_period_seconds
    )
 values
    ( 'd20ae0bc-c8c5-476c-9486-2ab4aaf9af09'
@@ -20,6 +21,7 @@ values
    , 10
    , 'execTest'
    , 5
+   , 60
    );
 
 -- migrate:down

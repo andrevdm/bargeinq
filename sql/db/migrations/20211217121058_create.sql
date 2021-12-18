@@ -28,6 +28,7 @@ CREATE TABLE if not exists work_type
   default_heartbeat_check_period int NULL,
   default_exec_environment text COLLATE pg_catalog."default" NOT NULL,
   dequeue_lock_period_seconds int NOT NULL,
+  poll_period_seconds int NOT NULL,
 
   CONSTRAINT work_type_pkey PRIMARY KEY (wtId)
 );
