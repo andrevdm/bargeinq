@@ -9,6 +9,7 @@ module Lib
 import           Protolude
 import qualified Data.UUID as UU
 
+import qualified Components.AppCmp as CA
 import qualified Components.QueueCmp as CQ
 import qualified Registry as Reg
 
@@ -22,9 +23,8 @@ testWorkType = CQ.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 286
 
 run :: IO ()
 run = do
-  q <- Reg.mkQueue
+  app <- Reg.mkApp (CQ.SystemId UU.nil)
   putText "\n\n----------------------"
-  _ <- CQ.qStartQueue q (CQ.SystemId UU.nil)
   loop
 
   where

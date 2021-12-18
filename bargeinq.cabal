@@ -36,11 +36,13 @@ library
 
   hs-source-dirs:      src
   exposed-modules:     Lib
+                     , Components.AppCmp
                      , Components.QueueCmp
                      , Components.PsqlCmp
                      , Components.LogCmp
                      , Components.DateCmp
                      , Components.UuidCmp
+                     , Impl.AppCmpIO
                      , Impl.QueueCmpIO
                      , Impl.PsqlCmpIO
                      , Impl.LogCmpIO

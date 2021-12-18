@@ -1,5 +1,4 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Components.QueueCmp
     ( NewWorkItem(..)
@@ -35,10 +34,8 @@ data NewWorkItem = NewWorkItem
 
 
 
-
-
 data QueueCmp m = QueueCmp
-  { qQueueWork:: !(PendingWorkItems -> QueueWorkItems -> m ())
-  , qStartQueue :: !(SystemId -> m (UA.Async ()))
+  { qStartQueue :: !(SystemId -> m (UA.Async ()))
+  , qQueueWork :: !(PendingWorkItems -> QueueWorkItems -> m ())
   }
 
