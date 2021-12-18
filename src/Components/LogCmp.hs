@@ -10,7 +10,7 @@ module Components.LogCmp
     , logLevelToText
     ) where
 
-import           Protolude
+import           Verset
 import qualified Data.Time as DT
 
 

@@ -9,7 +9,7 @@ module Impl.PsqlCmpIO
     , TracePg(..)
     ) where
 
-import           Protolude hiding (catchJust, tryJust, throwIO)
+import           Verset hiding (catchJust, tryJust, throwIO)
 import qualified Database.PostgreSQL.Simple as Pg
 import qualified Database.PostgreSQL.Simple.Notification as Pg
 import qualified Database.PostgreSQL.Simple.Transaction as Pg

@@ -10,7 +10,7 @@ module Components.QueueCmp
     , QueueCmp(..)
     ) where
 
-import           Protolude
+import           Verset
 import           Data.Time (UTCTime)
 import           Data.UUID (UUID)
 

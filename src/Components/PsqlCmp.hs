@@ -5,7 +5,7 @@ module Components.PsqlCmp
     ( PsqlCmp(..)
     ) where
 
-import           Protolude hiding (catchJust, tryJust)
+import           Verset hiding (catchJust, tryJust)
 import qualified Database.PostgreSQL.Simple.FromRow as Pg
 import qualified Database.PostgreSQL.Simple as Pg
 import           Database.PostgreSQL.Simple.ToRow (ToRow (..))

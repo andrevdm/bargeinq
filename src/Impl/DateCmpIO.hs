@@ -5,7 +5,7 @@ module Impl.DateCmpIO
     ( newDateCmpIO
     ) where
 
-import           Protolude
+import           Verset
 import qualified Data.Time as DT
 
 import qualified Components.DateCmp as CDt

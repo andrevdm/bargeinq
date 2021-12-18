@@ -6,7 +6,7 @@ module Impl.QueueCmpIO
     ( newQueueCmpIO
     ) where
 
-import           Protolude hiding (threadDelay)
+import           Verset hiding (threadDelay)
 import           Data.Time (UTCTime)
 import           Data.UUID (UUID)
 import           UnliftIO (MonadUnliftIO)

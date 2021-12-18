@@ -6,7 +6,7 @@ module BargeInQueue
     ( mkBargeInQueue
     ) where
 
-import           Protolude
+import           Verset
 
 import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ

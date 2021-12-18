@@ -7,7 +7,7 @@ module Impl.LogCmpIO
     ( newLogCmpIO
     ) where
 
-import           Protolude hiding (catchJust, tryJust, log)
+import           Verset hiding (catchJust, tryJust, log)
 import qualified Data.Text.Lazy as TxtL
 import qualified Text.Pretty.Simple as Pp
 

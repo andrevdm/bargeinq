@@ -5,7 +5,7 @@ module Impl.UuidCmpIO
     ( newUuidCmpIO
     ) where
 
-import           Protolude
+import           Verset
 import qualified Data.UUID.V4 as UU
 
 import qualified Components.UuidCmp as CUu

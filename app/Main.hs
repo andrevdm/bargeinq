@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import           Protolude
+import           Verset
 
 import qualified Lib
 

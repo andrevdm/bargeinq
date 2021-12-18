@@ -49,7 +49,7 @@ library
                      , Impl.DateCmpIO
                      , Impl.UuidCmpIO
                      , BargeInQueue
-  build-depends:       protolude
+  build-depends:       verset
                      , text
                      , bytestring
                      , containers
@@ -76,7 +76,7 @@ executable bargeinq-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:       bargeinq
-                     , protolude
+                     , verset
                      , text
                      , containers
   default-language:    Haskell2010
@@ -93,7 +93,7 @@ test-suite bargeinq-test
   hs-source-dirs:      test
   main-is:             Tests.hs
   build-depends:       bargeinq
-                     , protolude
+                     , verset
                      , text
                      , containers
                      , hedgehog

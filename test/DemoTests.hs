@@ -4,7 +4,7 @@
 
 module DemoTests (tests) where
 
-import           Protolude
+import           Verset
 import           Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range

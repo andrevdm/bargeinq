@@ -6,7 +6,7 @@ module Impl.BargeInQueueCmpIO
     ( newBargeInQueueCmpIO
     ) where
 
-import           Protolude
+import           Verset
 
 import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ

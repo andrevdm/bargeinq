@@ -6,9 +6,10 @@ module Lib
     ( run
     ) where
 
-import           Protolude
+import           Verset
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
+import qualified System.IO as IO
 
 import qualified Components.BargeInQueueCmp as CBq
 import qualified Components.QueueCmp as CQ
@@ -68,7 +69,7 @@ run = do
 
   where
     loop = do
-      getLine >>= \case
+      IO.getLine >>= \case
         "q" -> pass
         _ -> loop
 
