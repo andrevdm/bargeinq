@@ -27,7 +27,7 @@ run :: IO ()
 run = do
   bq <- Bq.mkBargeInQueue
           (CQ.SystemId UU.nil)
-          "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable?options=--search_path%3dpublic"
+          "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceAll
 
   pend1Id <- CQ.WorkItemId <$> UU.nextRandom

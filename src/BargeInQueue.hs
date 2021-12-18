@@ -33,4 +33,5 @@ mkBargeInQueue sysId connStr tracePg = do
     q = CQ.newQueueCmpIO @IO
     bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
   _ <- CQ.qStartQueue q sysId
+
   pure bq
