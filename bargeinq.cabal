@@ -49,6 +49,7 @@ library
                      , Impl.DateCmpIO
                      , Impl.UuidCmpIO
                      , BargeInQueue
+                     , Threading
   build-depends:       verset
                      , ansi-terminal
                      , text
