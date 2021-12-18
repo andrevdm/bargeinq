@@ -23,7 +23,7 @@ someFunc :: IO ()
 someFunc = do
   q <- Reg.mkQueue
   putText "\n\n----------------------"
-  CQ.qStartQueue q (CQ.SystemId UU.nil)
+  _ <- CQ.qStartQueue q (CQ.SystemId UU.nil)
 
   putText "someFunc"
 

@@ -6,16 +6,19 @@ module Impl.QueueCmpIO
     ( newQueueCmpIO
     ) where
 
-import           Protolude
+import           Protolude hiding (threadDelay)
 import           Data.Time (UTCTime)
 import           Data.UUID (UUID)
+import           UnliftIO (MonadUnliftIO)
+import qualified UnliftIO.Async as UA
+import qualified UnliftIO.Concurrent as UC
 
 import qualified Components.QueueCmp as CQ
 
 
 newQueueCmpIO
   :: forall m.
-     (MonadIO m)
+     (MonadUnliftIO m)
   => CQ.QueueCmp m
 newQueueCmpIO =
   CQ.QueueCmp
@@ -36,8 +39,9 @@ queueWork (CQ.PendingWorkItems pws) (CQ.QueuedWorkItems qws) = do
 
 startQueue
   :: forall m.
-     (MonadIO m)
+     (MonadUnliftIO m)
   => CQ.SystemId
-  -> m ()
-startQueue _sid = do
-  undefined
+  -> m (UA.Async ())
+startQueue _sid = UA.async . forever $ do
+  UC.threadDelay 1000
+  pass

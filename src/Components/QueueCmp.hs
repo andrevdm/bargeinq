@@ -13,6 +13,7 @@ module Components.QueueCmp
 import           Protolude
 import           Data.Time (UTCTime)
 import           Data.UUID (UUID)
+import qualified UnliftIO.Async as UA
 
 newtype QueueHandle = QueueHandle Int deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq)
@@ -38,6 +39,6 @@ data NewWorkItem = NewWorkItem
 
 data QueueCmp m = QueueCmp
   { qQueueWork:: !(PendingWorkItems -> QueueWorkItems -> m ())
-  , qStartQueue :: !(SystemId -> m ())
+  , qStartQueue :: !(SystemId -> m (UA.Async ()))
   }
 
