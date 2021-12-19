@@ -1,9 +1,9 @@
 -- migrate:up
-CREATE OR REPLACE FUNCTION fn_queue_notify() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION fn_bq_queue_notify() RETURNS trigger AS $$
 DECLARE
   r1 text;
 BEGIN
-  FOR r1 IN select i.system_id::text as system_id from pending_work_item p inner join work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+  FOR r1 IN select i.system_id::text as system_id from bq_pending_work_item p inner join bq_work_item i on p.wiid = i.wiid where p.piid = NEW.piid
     LOOP
       PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
     END loop;
@@ -14,19 +14,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE TRIGGER tg_queue_update_notify
+CREATE TRIGGER tg_bq_queue_update_notify
   AFTER UPDATE
-  ON queue
+  ON bq_queue
   FOR EACH ROW
-  EXECUTE PROCEDURE fn_queue_notify();
+  EXECUTE PROCEDURE fn_bq_queue_notify();
 
-CREATE TRIGGER tg_queue_insert_notify
+CREATE TRIGGER tg_bq_queue_insert_notify
   AFTER INSERT
-  ON queue
+  ON bq_queue
   FOR EACH ROW
-  EXECUTE PROCEDURE fn_queue_notify();
+  EXECUTE PROCEDURE fn_bq_queue_notify();
 
 -- migrate:down
-drop TRIGGER tg_queue_update_notify on queue;
-drop TRIGGER tg_queue_insert_notify on queue;
-drop function fn_queue_notify();
+drop TRIGGER tg_bq_queue_update_notify on bq_queue;
+drop TRIGGER tg_bq_queue_insert_notify on bq_queue;
+drop function fn_bq_queue_notify();

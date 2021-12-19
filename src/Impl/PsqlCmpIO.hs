@@ -146,7 +146,7 @@ runListenForNotifications lg connStr traceFlag (CPg.ChanName chanName) fn = do
         (liftIO . Pg.connectPostgreSQL $ TxtE.encodeUtf8 connStr)
         (silent . liftIO . Pg.close)
         (\conn -> do
-          let sql = "select null from fn_listen(?)"
+          let sql = "select null from fn_bq_listen(?)"
           when (traceFlag == TraceAll) $ CL.logDebug' lg "LISTEN: running LISTEN on new connection" (sql, chanName)
           _ :: [Pg.Only Pg.Null] <- liftIO $ Pg.query conn sql (Pg.Only chanName) -- run LISTEN (fn_list just makes the chan name a param)
           forever $ runListen conn

@@ -10,10 +10,10 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: fn_listen(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_bq_listen(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fn_listen(channel_ text) RETURNS void
+CREATE FUNCTION public.fn_bq_listen(channel_ text) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -23,16 +23,16 @@ $$;
 
 
 --
--- Name: fn_queue_notify(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_bq_queue_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.fn_queue_notify() RETURNS trigger
+CREATE FUNCTION public.fn_bq_queue_notify() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 DECLARE
   r1 text;
 BEGIN
-  FOR r1 IN select i.system_id::text as system_id from pending_work_item p inner join work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+  FOR r1 IN select i.system_id::text as system_id from bq_pending_work_item p inner join bq_work_item i on p.wiid = i.wiid where p.piid = NEW.piid
     LOOP
       PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
     END loop;
@@ -43,22 +43,11 @@ END;
 $$;
 
 
-SET default_tablespace = '';
-
 --
--- Name: dbmate_migrations; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_pending_work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.dbmate_migrations (
-    version character varying(255) NOT NULL
-);
-
-
---
--- Name: pending_work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.pending_work_item_seq
+CREATE SEQUENCE public.bq_pending_work_item_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -66,12 +55,14 @@ CREATE SEQUENCE public.pending_work_item_seq
     CACHE 1;
 
 
+SET default_tablespace = '';
+
 --
--- Name: pending_work_item; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_pending_work_item; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.pending_work_item (
-    piid bigint DEFAULT nextval('public.pending_work_item_seq'::regclass) NOT NULL,
+CREATE TABLE public.bq_pending_work_item (
+    piid bigint DEFAULT nextval('public.bq_pending_work_item_seq'::regclass) NOT NULL,
     wiid uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
     parent_pending_worker_item bigint
@@ -79,10 +70,10 @@ CREATE TABLE public.pending_work_item (
 
 
 --
--- Name: queue_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: bq_queue_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.queue_seq
+CREATE SEQUENCE public.bq_queue_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -91,11 +82,11 @@ CREATE SEQUENCE public.queue_seq
 
 
 --
--- Name: queue; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_queue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.queue (
-    qid bigint DEFAULT nextval('public.queue_seq'::regclass) NOT NULL,
+CREATE TABLE public.bq_queue (
+    qid bigint DEFAULT nextval('public.bq_queue_seq'::regclass) NOT NULL,
     piid bigint NOT NULL,
     locked_until timestamp without time zone,
     created_at timestamp without time zone NOT NULL,
@@ -105,10 +96,10 @@ CREATE TABLE public.queue (
 
 
 --
--- Name: system_config; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_system_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.system_config (
+CREATE TABLE public.bq_system_config (
     system_id uuid NOT NULL,
     requires_global_lock boolean NOT NULL,
     poll_period_seconds integer NOT NULL,
@@ -118,10 +109,10 @@ CREATE TABLE public.system_config (
 
 
 --
--- Name: work_item; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_work_item; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.work_item (
+CREATE TABLE public.bq_work_item (
     wiid uuid NOT NULL,
     system_id uuid NOT NULL,
     name text NOT NULL,
@@ -138,10 +129,10 @@ CREATE TABLE public.work_item (
 
 
 --
--- Name: work_type; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_work_type; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.work_type (
+CREATE TABLE public.bq_work_type (
     wtid uuid NOT NULL,
     system_id uuid NOT NULL,
     name text NOT NULL,
@@ -154,6 +145,55 @@ CREATE TABLE public.work_type (
 
 
 --
+-- Name: dbmate_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dbmate_migrations (
+    version character varying(255) NOT NULL
+);
+
+
+--
+-- Name: bq_pending_work_item bq_pending_work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_pending_work_item
+    ADD CONSTRAINT bq_pending_work_item_pkey PRIMARY KEY (piid);
+
+
+--
+-- Name: bq_system_config bq_queue_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_system_config
+    ADD CONSTRAINT bq_queue_config_pkey PRIMARY KEY (system_id);
+
+
+--
+-- Name: bq_queue bq_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_queue
+    ADD CONSTRAINT bq_queue_pkey PRIMARY KEY (qid);
+
+
+--
+-- Name: bq_work_item bq_work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item
+    ADD CONSTRAINT bq_work_item_pkey PRIMARY KEY (wiid);
+
+
+--
+-- Name: bq_work_type bq_work_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_type
+    ADD CONSTRAINT bq_work_type_pkey PRIMARY KEY (wtid);
+
+
+--
 -- Name: dbmate_migrations dbmate_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -162,175 +202,135 @@ ALTER TABLE ONLY public.dbmate_migrations
 
 
 --
--- Name: pending_work_item pending_work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_bq_pending_work_item_wi_id; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pending_work_item
-    ADD CONSTRAINT pending_work_item_pkey PRIMARY KEY (piid);
-
-
---
--- Name: system_config queue_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.system_config
-    ADD CONSTRAINT queue_config_pkey PRIMARY KEY (system_id);
+CREATE INDEX ix_bq_pending_work_item_wi_id ON public.bq_pending_work_item USING btree (wiid);
 
 
 --
--- Name: queue queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_bq_queue_heartbeat_at; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.queue
-    ADD CONSTRAINT queue_pkey PRIMARY KEY (qid);
-
-
---
--- Name: work_item work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.work_item
-    ADD CONSTRAINT work_item_pkey PRIMARY KEY (wiid);
+CREATE INDEX ix_bq_queue_heartbeat_at ON public.bq_queue USING btree (heartbeat_at);
 
 
 --
--- Name: work_type work_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_bq_queue_locked_until; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.work_type
-    ADD CONSTRAINT work_type_pkey PRIMARY KEY (wtid);
-
-
---
--- Name: ix_pending_work_item_wi_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_pending_work_item_wi_id ON public.pending_work_item USING btree (wiid);
+CREATE INDEX ix_bq_queue_locked_until ON public.bq_queue USING btree (locked_until);
 
 
 --
--- Name: ix_queue_heartbeat_at; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_bq_queue_piid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_queue_heartbeat_at ON public.queue USING btree (heartbeat_at);
-
-
---
--- Name: ix_queue_locked_until; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_queue_locked_until ON public.queue USING btree (locked_until);
+CREATE UNIQUE INDEX ix_bq_queue_piid ON public.bq_queue USING btree (piid);
 
 
 --
--- Name: ix_queue_piid; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_bq_queue_qid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_queue_piid ON public.queue USING btree (piid);
-
-
---
--- Name: ix_queue_qid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_queue_qid ON public.queue USING btree (qid);
+CREATE INDEX ix_bq_queue_qid ON public.bq_queue USING btree (qid);
 
 
 --
--- Name: ix_work_item_group_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_bq_work_item_group_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_work_item_group_id ON public.work_item USING btree (group_id);
-
-
---
--- Name: ix_work_item_ignore_until; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_work_item_ignore_until ON public.work_item USING btree (ignore_until);
+CREATE INDEX ix_bq_work_item_group_id ON public.bq_work_item USING btree (group_id);
 
 
 --
--- Name: ix_work_item_system_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_bq_work_item_ignore_until; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_work_item_system_id ON public.work_item USING btree (system_id);
-
-
---
--- Name: ix_work_item_wtid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_work_item_wtid ON public.work_item USING btree (wtid);
+CREATE INDEX ix_bq_work_item_ignore_until ON public.bq_work_item USING btree (ignore_until);
 
 
 --
--- Name: ix_work_type_system_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_bq_work_item_system_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_work_type_system_id ON public.work_type USING btree (system_id);
-
-
---
--- Name: queue tg_queue_insert_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER tg_queue_insert_notify AFTER INSERT ON public.queue FOR EACH ROW EXECUTE PROCEDURE public.fn_queue_notify();
+CREATE INDEX ix_bq_work_item_system_id ON public.bq_work_item USING btree (system_id);
 
 
 --
--- Name: queue tg_queue_update_notify; Type: TRIGGER; Schema: public; Owner: -
+-- Name: ix_bq_work_item_wtid; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE TRIGGER tg_queue_update_notify AFTER UPDATE ON public.queue FOR EACH ROW EXECUTE PROCEDURE public.fn_queue_notify();
-
-
---
--- Name: pending_work_item pending_work_item_parent_pending_worker_item_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pending_work_item
-    ADD CONSTRAINT pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.pending_work_item(piid);
+CREATE INDEX ix_bq_work_item_wtid ON public.bq_work_item USING btree (wtid);
 
 
 --
--- Name: pending_work_item pending_work_item_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_bq_work_type_system_id; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pending_work_item
-    ADD CONSTRAINT pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.work_item(wiid);
-
-
---
--- Name: queue queue_piid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.queue
-    ADD CONSTRAINT queue_piid_fkey FOREIGN KEY (piid) REFERENCES public.pending_work_item(piid);
+CREATE INDEX ix_bq_work_type_system_id ON public.bq_work_type USING btree (system_id);
 
 
 --
--- Name: work_item work_item_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bq_queue tg_bq_queue_insert_notify; Type: TRIGGER; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.work_item
-    ADD CONSTRAINT work_item_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.system_config(system_id);
-
-
---
--- Name: work_item work_item_wtid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.work_item
-    ADD CONSTRAINT work_item_wtid_fkey FOREIGN KEY (wtid) REFERENCES public.work_type(wtid);
+CREATE TRIGGER tg_bq_queue_insert_notify AFTER INSERT ON public.bq_queue FOR EACH ROW EXECUTE PROCEDURE public.fn_bq_queue_notify();
 
 
 --
--- Name: work_type work_type_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bq_queue tg_bq_queue_update_notify; Type: TRIGGER; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.work_type
-    ADD CONSTRAINT work_type_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.system_config(system_id);
+CREATE TRIGGER tg_bq_queue_update_notify AFTER UPDATE ON public.bq_queue FOR EACH ROW EXECUTE PROCEDURE public.fn_bq_queue_notify();
+
+
+--
+-- Name: bq_pending_work_item bq_pending_work_item_parent_pending_worker_item_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_pending_work_item
+    ADD CONSTRAINT bq_pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.bq_pending_work_item(piid);
+
+
+--
+-- Name: bq_pending_work_item bq_pending_work_item_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_pending_work_item
+    ADD CONSTRAINT bq_pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.bq_work_item(wiid);
+
+
+--
+-- Name: bq_queue bq_queue_piid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_queue
+    ADD CONSTRAINT bq_queue_piid_fkey FOREIGN KEY (piid) REFERENCES public.bq_pending_work_item(piid);
+
+
+--
+-- Name: bq_work_item bq_work_item_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item
+    ADD CONSTRAINT bq_work_item_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system_config(system_id);
+
+
+--
+-- Name: bq_work_item bq_work_item_wtid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item
+    ADD CONSTRAINT bq_work_item_wtid_fkey FOREIGN KEY (wtid) REFERENCES public.bq_work_type(wtid);
+
+
+--
+-- Name: bq_work_type bq_work_type_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_type
+    ADD CONSTRAINT bq_work_type_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system_config(system_id);
 
 
 --
