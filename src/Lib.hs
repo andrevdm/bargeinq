@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Lib
     ( run
@@ -10,6 +11,7 @@ import           Verset
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
 import qualified System.IO as IO
+import           UnliftIO (MonadUnliftIO)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
@@ -27,13 +29,14 @@ testWorkType = C.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 2868
 
 run :: IO ()
 run = do
-  let usrCmp = newUserCmpDemo
+  --let usrCmp = newUserCmpDemo
 
   bq <- Bq.mkBargeInQueue
           testSysId
-          usrCmp
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceStandard
+  let usrCmp = newUserCmpDemo @IO bq
+  CBq.bqStartQueue bq usrCmp
 
   pend1Id <- C.WorkItemId <$> UU.nextRandom
   active1Id <- C.WorkItemId <$> UU.nextRandom
@@ -78,8 +81,8 @@ run = do
         _ -> loop
 
 
-newUserCmpDemo :: (MonadIO m) => CUsr.UserCmp m
-newUserCmpDemo =
+newUserCmpDemo :: (MonadUnliftIO m) => CBq.BargeInQueueCmp m -> CUsr.UserCmp m
+newUserCmpDemo _bq =
   CUsr.UserCmp
     { CUsr.usrQueueStarting = putText "~~queue starting"
     }

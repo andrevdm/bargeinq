@@ -18,8 +18,6 @@ import           UnliftIO.Exception (throwString)
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
 import qualified BargeInQueue.Components.RepoCmp as CR
-import qualified BargeInQueue.Components.QueueCmp as CQ
-import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.BargeInQueueCmpIO as CBq
 import qualified BargeInQueue.Impl.DateCmpIO as CDt
 import qualified BargeInQueue.Impl.EnvCmpIO as CE
@@ -31,11 +29,10 @@ import qualified BargeInQueue.Impl.UuidCmpIO as CUu
 
 mkBargeInQueue
   :: C.SystemId
-  -> CUsr.UserCmp IO
   -> Text
   -> CPg.TracePg
   -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId usrCmp connStr tracePg = do
+mkBargeInQueue sysId connStr tracePg = do
   -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
@@ -59,12 +56,5 @@ mkBargeInQueue sysId usrCmp connStr tracePg = do
   -- Create the rest
   env <- CE.newEnvCmpIO sysConfig
   let uu = CUu.newUuidCmpIO @IO
-  let q = CQ.newQueueCmpIO @IO pg lg repo usrCmp sysConfig
-  let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
-
-
-  -- Start the queue
-  CUsr.usrQueueStarting usrCmp
-  _ <- CQ.qStartQueue q
-
-  pure bq
+  let q = CQ.newQueueCmpIO @IO pg lg repo env sysConfig
+  pure $ CBq.newBargeInQueueCmpIO q dt uu lg pg env

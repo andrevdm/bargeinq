@@ -21,8 +21,9 @@ import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
-import qualified BargeInQueue.Components.UserCmp as CUsr
+--import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Threading as Th
+import qualified BargeInQueue.Components.EnvCmp as CEnv
 
 
 newQueueCmpIO
@@ -31,15 +32,15 @@ newQueueCmpIO
   => CPg.PsqlCmp m
   -> CL.LogCmp m
   -> CR.RepoCmp m
-  -> CUsr.UserCmp m
+  -> CEnv.EnvCmp m
   -> C.SystemConfig
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp repoCmp usrCmp sys = do
+newQueueCmpIO pgCmp lgCmp repoCmp envCmp sys = do
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp usrCmp chan
+    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp chan
     }
 
 
@@ -49,7 +50,7 @@ queueWork
   => C.PendingWorkItems
   -> C.QueueWorkItems
   -> m ()
-queueWork (C.PendingWorkItems pws) (C.QueueWorkItems qws) = do
+queueWork (C.PendingWorkItems _pws) (C.QueueWorkItems _qws) = do
   pass
 
 
@@ -60,10 +61,10 @@ startQueue
   -> CPg.PsqlCmp m
   -> CL.LogCmp m
   -> CR.RepoCmp m
-  -> CUsr.UserCmp m
+  -> CEnv.EnvCmp m
   -> CPg.ChanName
   -> m ()
-startQueue sys pgCmp lgCmp repoCmp usrCmp chanName = do
+startQueue sys pgCmp lgCmp repoCmp _envCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
