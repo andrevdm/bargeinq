@@ -50,11 +50,11 @@ listSystems pgCmp = do
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
     Right rs -> pure . Right $ rs <&> \(sid, reqLock, poll, lockUntil, lockedBy) ->
       C.SystemConfig
-        { C.scId = sid
-        , C.scRequiresGlobalLock = reqLock
-        , C.scPollPeriodSeconds = poll
-        , C.scLockedUntil = lockUntil
-        , C.scLockedBy = lockedBy
+        { C._scId = sid
+        , C._scRequiresGlobalLock = reqLock
+        , C._scPollPeriodSeconds = poll
+        , C._scLockedUntil = lockUntil
+        , C._scLockedBy = lockedBy
         }
 
 
@@ -82,11 +82,11 @@ getSystem pgCmp (C.SystemId sysId) = do
     Right [] -> pure . Right $ Nothing
     Right [(sid, reqLock, poll, lockUntil, lockedBy)] ->
       pure . Right . Just $ C.SystemConfig
-        { C.scId = sid
-        , C.scRequiresGlobalLock = reqLock
-        , C.scPollPeriodSeconds = poll
-        , C.scLockedUntil = lockUntil
-        , C.scLockedBy = lockedBy
+        { C._scId = sid
+        , C._scRequiresGlobalLock = reqLock
+        , C._scPollPeriodSeconds = poll
+        , C._scLockedUntil = lockUntil
+        , C._scLockedBy = lockedBy
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
 

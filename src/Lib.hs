@@ -36,29 +36,29 @@ run = do
 
   let toPending = C.PendingWorkItems
        [ C.NewWorkItem
-         { C.wiId = pend1Id
-         , C.wiName = "pending1"
-         , C.wiSystemId = testSysId
-         , C.wiWorkerType = testWorkType
-         , C.wiGroupId = Nothing
-         , C.wiDependsOnGroups = []
-         , C.wiDependsOnWorkItem = []
-         , C.wiOverrideIgnoreUntil = Nothing
-         , C.wiOverrideRetriesLeft = Nothing
+         { C._wiId = pend1Id
+         , C._wiName = "pending1"
+         , C._wiSystemId = testSysId
+         , C._wiWorkerType = testWorkType
+         , C._wiGroupId = Nothing
+         , C._wiDependsOnGroups = []
+         , C._wiDependsOnWorkItem = []
+         , C._wiOverrideIgnoreUntil = Nothing
+         , C._wiOverrideRetriesLeft = Nothing
          }
        ]
 
   let toActive = C.QueueWorkItems
        [ C.NewWorkItem
-         { C.wiId = active1Id
-         , C.wiName = "active1"
-         , C.wiSystemId = testSysId
-         , C.wiWorkerType = testWorkType
-         , C.wiGroupId = Nothing
-         , C.wiDependsOnGroups = []
-         , C.wiDependsOnWorkItem = []
-         , C.wiOverrideIgnoreUntil = Nothing
-         , C.wiOverrideRetriesLeft = Nothing
+         { C._wiId = active1Id
+         , C._wiName = "active1"
+         , C._wiSystemId = testSysId
+         , C._wiWorkerType = testWorkType
+         , C._wiGroupId = Nothing
+         , C._wiDependsOnGroups = []
+         , C._wiDependsOnWorkItem = []
+         , C._wiOverrideIgnoreUntil = Nothing
+         , C._wiOverrideRetriesLeft = Nothing
          }
        ]
 

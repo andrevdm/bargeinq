@@ -59,6 +59,7 @@ library
                      , bytestring
                      , colour
                      , containers
+                     , lens
                      , raw-strings-qq
                      , postgresql-simple
                      , resource-pool
