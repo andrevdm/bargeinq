@@ -10,6 +10,70 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: bq_fetch_queue(integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bq_fetch_queue(_lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  return query
+
+  -- Fetch and lock a single item, if there are any available
+  with
+    cte_lock as (
+      select
+          qid
+      from
+        bq_queue
+      where
+        (locked_until is null or locked_until < now())
+      limit 1
+      for update skip locked
+    ),
+    cte_data as (
+      select
+          rq.qid
+        , rq.locked_until
+        , rpi.piid
+        , rwi.wiid
+        , rwi.wtid
+        , rwi.name as wi_name
+      from
+        bq_queue rq
+      inner join
+        cte_lock
+      on
+        cte_lock.qid = rq.qid
+      inner join
+        bq_pending_work_item rpi
+      on
+        rpi.piid = rq.piid
+      inner join
+        bq_work_item rwi
+      on
+        rwi.wiid = rpi.wiid
+      where
+        rq.qid = cte_lock.qid
+    )
+  update
+    bq_queue q
+  set
+    locked_until = now() + (interval '1 second' * _lock_for_seconds)
+  from
+    cte_lock
+  inner join
+    cte_data
+  on
+    cte_data.qid = cte_lock.qid
+  returning
+    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name;
+
+END
+$$;
+
+
+--
 -- Name: fn_bq_listen(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -346,4 +410,5 @@ INSERT INTO public.dbmate_migrations (version) VALUES
     ('20211217121058'),
     ('20211217140058'),
     ('20211218143535'),
-    ('20211218155829');
+    ('20211218155829'),
+    ('20211219102340');
