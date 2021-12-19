@@ -14,14 +14,13 @@ import           Control.Lens ((^.))
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
-import           Text.Pretty.Simple (pPrint)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
---import qualified BargeInQueue.Components.UserCmp as CUsr
+import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Threading as Th
 import qualified BargeInQueue.Components.EnvCmp as CEnv
 
@@ -64,14 +63,14 @@ startQueue
   -> CEnv.EnvCmp m
   -> CPg.ChanName
   -> m ()
-startQueue sys pgCmp lgCmp repoCmp _envCmp chanName = do
+startQueue sys pgCmp lgCmp repoCmp envCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
     CL.logDebug' lgCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop pollGate (tryGetActiveItem repoCmp sys)
+  void . UA.async $ runPollLoop pollGate (tryGetActiveItem repoCmp envCmp sys)
 
   CL.logDebug lgCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
@@ -82,10 +81,13 @@ tryGetActiveItem
   :: forall m.
      (MonadUnliftIO m)
   => CR.RepoCmp m
+  -> CEnv.EnvCmp m
   -> C.SystemConfig
   -> m Bool
-tryGetActiveItem repoCmp sys = do
+tryGetActiveItem repoCmp envCmp sys = do
   putText "tryGetActive"
+  usrCmp <- CEnv.envDemandUser envCmp
+
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
     Left e -> do
       print e --TODO log + error
@@ -97,9 +99,14 @@ tryGetActiveItem repoCmp sys = do
     Right (Just qi) -> do
       if isJust (qi ^. CR.dqaDequeuedAt)
         then do
-          --TODO CUsr.usrProcessQueuedItem (qi ^. CR.dqaQueueId) (qi ^. CR.dqqWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName)
-          pPrint qi
-          pure True
+          CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName) >>= \case
+            CUsr.PirSuccess -> do
+              --TODO remove from queue etc
+              pure True
+            CUsr.PirError _title _message -> do
+              --TODO log, remove, increment, add
+              pure False
+
         else do
           --TODO lock timeout expired, log, remove from queue, check retries etc
           pure True
