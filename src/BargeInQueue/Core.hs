@@ -14,11 +14,11 @@ module BargeInQueue.Core
     , wiOverrideRetriesLeft
 
     , SystemConfig(..)
-    , scId
-    , scRequiresGlobalLock
-    , scPollPeriodSeconds
-    , scLockedUntil
-    , scLockedBy
+    , sysId
+    , sysRequiresGlobalLock
+    , sysPollPeriodSeconds
+    , sysLockedUntil
+    , sysLockedBy
 
     , WorkItemId(..)
     , SystemId(..)
@@ -52,11 +52,11 @@ data NewWorkItem = NewWorkItem
 
 
 data SystemConfig = SystemConfig
-  { _scId :: !UUID
-  , _scRequiresGlobalLock :: !Bool
-  , _scPollPeriodSeconds :: !Int
-  , _scLockedUntil :: !(Maybe UTCTime)
-  , _scLockedBy :: !(Maybe Text)
+  { _sysId :: !UUID
+  , _sysRequiresGlobalLock :: !Bool
+  , _sysPollPeriodSeconds :: !Int
+  , _sysLockedUntil :: !(Maybe UTCTime)
+  , _sysLockedBy :: !(Maybe Text)
   } deriving (Show)
 
 

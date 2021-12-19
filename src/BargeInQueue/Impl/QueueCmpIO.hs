@@ -9,6 +9,7 @@ module BargeInQueue.Impl.QueueCmpIO
 import           Verset hiding (threadDelay)
 import qualified Data.Text as Txt
 import qualified Data.UUID as UU
+import           Control.Lens ((^.))
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
@@ -25,11 +26,10 @@ newQueueCmpIO
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CL.LogCmp m
-  -> C.SystemId
   -> C.SystemConfig
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp (C.SystemId sid) _sysConfig = do
-  let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sid)
+newQueueCmpIO pgCmp lgCmp sys = do
+  let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText $ sys ^. C.sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
     , CQ.qStartQueue = startQueue pgCmp lgCmp chan

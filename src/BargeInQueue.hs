@@ -10,9 +10,8 @@ module BargeInQueue
 import           Verset
 import           Control.Concurrent.STM (atomically)
 import qualified Control.Concurrent.STM.TBMQueue as TBMQ
+import           Control.Lens ((^.))
 import qualified Data.Text as Txt
-import qualified Data.UUID as UU
-import           Text.Pretty.Simple (pPrint)
 import           UnliftIO.Exception (throwString)
 
 
@@ -49,11 +48,14 @@ mkBargeInQueue sysId connStr tracePg = do
   sysConfig <- CR.rpGetSystem repo sysId >>= \case
     Left e -> throwString $ Txt.unpack e
     Right Nothing -> throwString $ "BargeInQueue system does not exist: " <> show sysId
-    Right (Just s) -> pure s
+    Right (Just s) ->
+      if C.SystemId (s ^. C.sysId) == sysId
+        then pure s
+        else throwString $ "Invalid SystemId returned. Expecting: " <> show sysId <> ", got: " <> show (s ^. C.sysId)
 
   -- Create the rest
   let uu = CUu.newUuidCmpIO @IO
-  let q = CQ.newQueueCmpIO @IO pg lg sysId sysConfig
+  let q = CQ.newQueueCmpIO @IO pg lg sysConfig
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
 
 
