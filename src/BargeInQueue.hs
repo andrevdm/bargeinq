@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE LambdaCase #-}
 
 module BargeInQueue
     ( mkBargeInQueue
@@ -9,7 +10,10 @@ module BargeInQueue
 import           Verset
 import           Control.Concurrent.STM (atomically)
 import qualified Control.Concurrent.STM.TBMQueue as TBMQ
+import qualified Data.Text as Txt
+import qualified Data.UUID as UU
 import           Text.Pretty.Simple (pPrint)
+import           UnliftIO.Exception (throwString)
 
 
 import qualified BargeInQueue.Core as C
@@ -30,21 +34,30 @@ mkBargeInQueue
   -> CPg.TracePg
   -> IO (CBq.BargeInQueueCmp IO)
 mkBargeInQueue sysId connStr tracePg = do
+  -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
   CL.startTerminalPrinter prnQ
 
+  -- Create enough components so we can query the repo
   let dt = CDt.newDateCmpIO @IO
-  let uu = CUu.newUuidCmpIO @IO
   let lg = CL.newLogCmpIO @IO [termWriter] dt
   pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
   let repo = CR.newRepoCmpPsql pg
-  let q = CQ.newQueueCmpIO @IO pg lg sysId
+
+  -- Fetch the system config
+  sysConfig <- CR.rpGetSystem repo sysId >>= \case
+    Left e -> throwString $ Txt.unpack e
+    Right Nothing -> throwString $ "BargeInQueue system does not exist: " <> show sysId
+    Right (Just s) -> pure s
+
+  -- Create the rest
+  let uu = CUu.newUuidCmpIO @IO
+  let q = CQ.newQueueCmpIO @IO pg lg sysId sysConfig
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
 
-  ss <- CR.rpListSystems repo
-  pPrint ss
 
+  -- Start the queue
   _ <- CQ.qStartQueue q
 
   pure bq

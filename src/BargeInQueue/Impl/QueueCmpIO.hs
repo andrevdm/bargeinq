@@ -26,8 +26,9 @@ newQueueCmpIO
   => CPg.PsqlCmp m
   -> CL.LogCmp m
   -> C.SystemId
+  -> C.SystemConfig
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp (C.SystemId sid) = do
+newQueueCmpIO pgCmp lgCmp (C.SystemId sid) _sysConfig = do
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sid)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
