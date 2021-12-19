@@ -1,20 +1,20 @@
 -- migrate:up
-CREATE TABLE if not exists bq_system_config
+CREATE TABLE if not exists bq_system
 (
   system_id uuid NOT NULL,
   requires_global_lock boolean not null,
   poll_period_seconds int NOT NULL,
-  locked_until timestamp without time zone null,
+  locked_until timestamp with time zone null,
   locked_by text COLLATE pg_catalog."default" null,
 
-  CONSTRAINT bq_queue_config_pkey PRIMARY KEY (system_id)
+  CONSTRAINT bq_system_pkey PRIMARY KEY (system_id)
 );
 
 
 CREATE TABLE if not exists bq_work_type
 (
   wtId uuid NOT NULL,
-  system_id uuid NOT NULL references bq_system_config(system_id),
+  system_id uuid NOT NULL references bq_system(system_id),
   name text COLLATE pg_catalog."default" NOT NULL,
   default_retries int NOT NULL,
   default_backoff_seconds int[] NOT NULL,
@@ -30,12 +30,12 @@ CREATE INDEX if not exists ix_bq_work_type_system_id ON bq_work_type (system_id)
 CREATE TABLE if not exists bq_work_item
 (
   wiid uuid NOT NULL,
-  system_id uuid NOT NULL references bq_system_config(system_id),
+  system_id uuid NOT NULL references bq_system(system_id),
   name text COLLATE pg_catalog."default" NOT NULL,
   wtid uuid NOT NULL references bq_work_type(wtId),
-  ignore_until timestamp without time zone null,
+  ignore_until timestamp with time zone null,
   retries_left int NOT NULL,
-  created_at timestamp without time zone not null,
+  created_at timestamp with time zone not null,
   group_id uuid NULL,
   depends_on_groups uuid[] NULL,
   depends_on_work_item uuid[] NULL,
@@ -55,7 +55,7 @@ CREATE TABLE if not exists bq_pending_work_item
 (
   piId bigint NOT NULL DEFAULT nextval('bq_pending_work_item_seq'::regclass),
   wiId uuid NOT NULL references bq_work_item(wiId),
-  created_at timestamp without time zone not null,
+  created_at timestamp with time zone not null,
   parent_pending_worker_item bigint NULL references bq_pending_work_item(piId),
 
   CONSTRAINT bq_pending_work_item_pkey PRIMARY KEY (piId)
@@ -68,10 +68,10 @@ CREATE TABLE if not exists bq_queue
 (
   qId bigint NOT NULL DEFAULT nextval('bq_queue_seq'::regclass),
   piId bigint NOT NULL references bq_pending_work_item(piId),
-  locked_until timestamp without time zone null,
-  created_at timestamp without time zone not null,
-  started_at timestamp without time zone null,
-  heartbeat_at timestamp without time zone null,
+  locked_until timestamp with time zone null,
+  created_at timestamp with time zone not null,
+  started_at timestamp with time zone null,
+  heartbeat_at timestamp with time zone null,
 
   CONSTRAINT bq_queue_pkey PRIMARY KEY (qId)
 );
@@ -88,5 +88,5 @@ drop table bq_pending_work_item;
 drop sequence bq_pending_work_item_seq;
 drop table bq_work_item;
 drop table bq_work_type;
-drop table bq_system_config;
+drop table bq_system;
 

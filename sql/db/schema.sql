@@ -64,7 +64,7 @@ SET default_tablespace = '';
 CREATE TABLE public.bq_pending_work_item (
     piid bigint DEFAULT nextval('public.bq_pending_work_item_seq'::regclass) NOT NULL,
     wiid uuid NOT NULL,
-    created_at timestamp without time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL,
     parent_pending_worker_item bigint
 );
 
@@ -88,22 +88,22 @@ CREATE SEQUENCE public.bq_queue_seq
 CREATE TABLE public.bq_queue (
     qid bigint DEFAULT nextval('public.bq_queue_seq'::regclass) NOT NULL,
     piid bigint NOT NULL,
-    locked_until timestamp without time zone,
-    created_at timestamp without time zone NOT NULL,
-    started_at timestamp without time zone,
-    heartbeat_at timestamp without time zone
+    locked_until timestamp with time zone,
+    created_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone,
+    heartbeat_at timestamp with time zone
 );
 
 
 --
--- Name: bq_system_config; Type: TABLE; Schema: public; Owner: -
+-- Name: bq_system; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.bq_system_config (
+CREATE TABLE public.bq_system (
     system_id uuid NOT NULL,
     requires_global_lock boolean NOT NULL,
     poll_period_seconds integer NOT NULL,
-    locked_until timestamp without time zone,
+    locked_until timestamp with time zone,
     locked_by text
 );
 
@@ -117,9 +117,9 @@ CREATE TABLE public.bq_work_item (
     system_id uuid NOT NULL,
     name text NOT NULL,
     wtid uuid NOT NULL,
-    ignore_until timestamp without time zone,
+    ignore_until timestamp with time zone,
     retries_left integer NOT NULL,
-    created_at timestamp without time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL,
     group_id uuid,
     depends_on_groups uuid[],
     depends_on_work_item uuid[],
@@ -162,19 +162,19 @@ ALTER TABLE ONLY public.bq_pending_work_item
 
 
 --
--- Name: bq_system_config bq_queue_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bq_system_config
-    ADD CONSTRAINT bq_queue_config_pkey PRIMARY KEY (system_id);
-
-
---
 -- Name: bq_queue bq_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bq_queue
     ADD CONSTRAINT bq_queue_pkey PRIMARY KEY (qid);
+
+
+--
+-- Name: bq_system bq_system_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_system
+    ADD CONSTRAINT bq_system_pkey PRIMARY KEY (system_id);
 
 
 --
@@ -314,7 +314,7 @@ ALTER TABLE ONLY public.bq_queue
 --
 
 ALTER TABLE ONLY public.bq_work_item
-    ADD CONSTRAINT bq_work_item_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system_config(system_id);
+    ADD CONSTRAINT bq_work_item_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system(system_id);
 
 
 --
@@ -330,7 +330,7 @@ ALTER TABLE ONLY public.bq_work_item
 --
 
 ALTER TABLE ONLY public.bq_work_type
-    ADD CONSTRAINT bq_work_type_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system_config(system_id);
+    ADD CONSTRAINT bq_work_type_system_id_fkey FOREIGN KEY (system_id) REFERENCES public.bq_system(system_id);
 
 
 --

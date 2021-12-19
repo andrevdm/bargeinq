@@ -1,5 +1,5 @@
 -- migrate:up
-insert into bq_system_config (system_id, requires_global_lock, poll_period_seconds) values ('36bad147-4370-4940-a0eb-bc08c3edf212', true, 20);
+insert into bq_system (system_id, requires_global_lock, poll_period_seconds) values ('36bad147-4370-4940-a0eb-bc08c3edf212', true, 20);
 
 insert into bq_work_type
    ( wtId
@@ -24,4 +24,4 @@ values
 
 -- migrate:down
 delete from bq_work_type where system_id = '36bad147-4370-4940-a0eb-bc08c3edf212';
-delete from bq_system_config where system_id = '36bad147-4370-4940-a0eb-bc08c3edf212';
+delete from bq_system where system_id = '36bad147-4370-4940-a0eb-bc08c3edf212';
