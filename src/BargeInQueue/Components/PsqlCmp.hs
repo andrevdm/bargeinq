@@ -4,12 +4,16 @@
 module BargeInQueue.Components.PsqlCmp
     ( PsqlCmp(..)
     , ChanName(..)
+    , Pg.Only(..)
+    , Pg.Null(..)
+    , Pg.PGArray(..)
     ) where
 
 import           Verset
 import qualified Database.PostgreSQL.Simple.FromRow as Pg
 import qualified Database.PostgreSQL.Simple as Pg
 import           Database.PostgreSQL.Simple.ToRow (ToRow (..))
+import qualified Database.PostgreSQL.Simple.Types as Pg
 import qualified Database.PostgreSQL.Simple.Notification as Pg
 
 newtype ChanName = ChanName Text deriving (Show, Eq, Ord)
