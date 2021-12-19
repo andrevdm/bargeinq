@@ -19,6 +19,7 @@ import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
 import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
+import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.BargeInQueueCmpIO as CBq
 import qualified BargeInQueue.Impl.DateCmpIO as CDt
 import qualified BargeInQueue.Impl.LogCmpIO as CL
@@ -29,10 +30,11 @@ import qualified BargeInQueue.Impl.UuidCmpIO as CUu
 
 mkBargeInQueue
   :: C.SystemId
+  -> CUsr.UserCmp IO
   -> Text
   -> CPg.TracePg
   -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId connStr tracePg = do
+mkBargeInQueue sysId usrCmp connStr tracePg = do
   -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
@@ -60,6 +62,7 @@ mkBargeInQueue sysId connStr tracePg = do
 
 
   -- Start the queue
+  CUsr.usrQueueStarting usrCmp
   _ <- CQ.qStartQueue q
 
   pure bq

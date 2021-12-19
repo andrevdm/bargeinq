@@ -13,6 +13,7 @@ import qualified System.IO as IO
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
+import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
 import qualified BargeInQueue as Bq
 
@@ -26,8 +27,11 @@ testWorkType = C.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 2868
 
 run :: IO ()
 run = do
+  let usrCmp = newUserCmpDemo
+
   bq <- Bq.mkBargeInQueue
           testSysId
+          usrCmp
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceStandard
 
@@ -74,3 +78,8 @@ run = do
         _ -> loop
 
 
+newUserCmpDemo :: (MonadIO m) => CUsr.UserCmp m
+newUserCmpDemo =
+  CUsr.UserCmp
+    { CUsr.usrQueueStarting = putText "~~queue starting"
+    }

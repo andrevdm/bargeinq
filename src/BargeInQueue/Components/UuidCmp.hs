@@ -4,7 +4,7 @@ module BargeInQueue.Components.UuidCmp
     ( UuidCmp(..)
     ) where
 
-import           Data.UUID (UUID)
+import           Verset
 
 
 newtype UuidCmp m = UuidCmp { uuRandomUuid :: m UUID }

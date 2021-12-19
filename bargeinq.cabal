@@ -42,6 +42,7 @@ library
                      , BargeInQueue.Components.LogCmp
                      , BargeInQueue.Components.RepoCmp
                      , BargeInQueue.Components.DateCmp
+                     , BargeInQueue.Components.UserCmp
                      , BargeInQueue.Components.UuidCmp
                      , BargeInQueue.Impl.BargeInQueueCmpIO
                      , BargeInQueue.Impl.QueueCmpIO
