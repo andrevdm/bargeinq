@@ -32,7 +32,7 @@ newQueueCmpIO pgCmp lgCmp sys = do
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText $ sys ^. C.sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue pgCmp lgCmp chan
+    , CQ.qStartQueue = startQueue sys pgCmp lgCmp chan
     }
 
 
@@ -49,11 +49,12 @@ queueWork (C.PendingWorkItems pws) (C.QueueWorkItems qws) = do
 startQueue
   :: forall m.
      (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  => C.SystemConfig
+  -> CPg.PsqlCmp m
   -> CL.LogCmp m
   -> CPg.ChanName
   -> m ()
-startQueue pgCmp lgCmp chanName = do
+startQueue sys pgCmp lgCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
@@ -61,7 +62,9 @@ startQueue pgCmp lgCmp chanName = do
     Th.openGate pollGate
 
   void . UA.async $ runPollLoop pollGate tryGetActiveItem
-  void . UA.async $ runTriggerPoll 10 pollGate --TODO get poll period
+
+  CL.logDebug lgCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
+  void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
 
 
 -- | See if there is actually an item to work with
