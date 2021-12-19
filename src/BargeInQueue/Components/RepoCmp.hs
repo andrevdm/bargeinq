@@ -12,7 +12,7 @@ import qualified Data.Time as DT
 import qualified BargeInQueue.Core as C
 
 data RepoCmp m = RepoCmp
-  { rpListSystems :: ![SystemConfig]
+  { rpListSystems :: !(m (Either SomeException [SystemConfig]))
   , rpFetchSystem :: !(C.SystemId -> m (Maybe SystemConfig))
   }
 
