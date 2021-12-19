@@ -67,7 +67,7 @@ startQueue sys pgCmp lgCmp repoCmp envCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
-    CL.logDebug' lgCmp "LISTEN> " n
+    CL.logTest' lgCmp "LISTEN> " n
     Th.openGate pollGate
 
   void . UA.async $ runPollLoop pollGate (tryGetActiveItem repoCmp envCmp sys)

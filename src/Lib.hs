@@ -15,6 +15,7 @@ import           UnliftIO (MonadUnliftIO)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
+import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
 import qualified BargeInQueue as Bq
@@ -35,6 +36,7 @@ run = do
           testSysId
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceStandard
+          CL.LevelDebug
   let usrCmp = newUserCmpDemo @IO bq
   CBq.bqStartQueue bq usrCmp
 

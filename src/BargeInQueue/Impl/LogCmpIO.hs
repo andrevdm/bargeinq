@@ -21,6 +21,7 @@ import qualified System.Console.ANSI as An
 
 import qualified BargeInQueue.Components.DateCmp as CDt
 import qualified BargeInQueue.Components.LogCmp as CL
+import BargeInQueue.Components.LogCmp (LogLevel)
 
 
 newLogCmpIO
@@ -78,19 +79,25 @@ createQueueLogWriter q =
 startTerminalPrinter
   :: forall m.
      (MonadIO m)
-  => TBMQueue CL.LogEntry
+  => LogLevel
+  -> TBMQueue CL.LogEntry
   -> m ()
-startTerminalPrinter q = do
+startTerminalPrinter minLevel q = do
   void . liftIO . forkIO . forever $
     atomically (readTBMQueue q) >>= \case
       Nothing -> pass
       Just ((CL.LogEntry at level s d)) -> do
-        An.setSGR $ case level of
-                      CL.LevelError -> [An.SetColor An.Foreground An.Vivid An.Red]
-                      CL.LevelWarn -> [An.SetColor An.Foreground An.Vivid An.Yellow]
-                      CL.LevelInfo -> [An.SetColor An.Foreground An.Vivid An.Cyan]
-                      CL.LevelDebug -> [An.SetRGBColor An.Foreground Clr.dimgrey]
-                      CL.LevelTest -> [An.SetRGBColor An.Foreground Clr.pink]
-        let dt = DT.formatTime DT.defaultTimeLocale "%Y-%m-%d %H:%M:%S.%q: " at
-        putText $ Txt.pack dt <> s <> "  " <> d
-        An.setSGR [An.Reset]
+        when (shouldLog level) $ do
+          An.setSGR $ case level of
+                        CL.LevelError -> [An.SetColor An.Foreground An.Vivid An.Red]
+                        CL.LevelWarn -> [An.SetColor An.Foreground An.Vivid An.Yellow]
+                        CL.LevelInfo -> [An.SetColor An.Foreground An.Vivid An.Cyan]
+                        CL.LevelDebug -> [An.SetRGBColor An.Foreground Clr.dimgrey]
+                        CL.LevelTest -> [An.SetRGBColor An.Foreground Clr.pink]
+          let dt = DT.formatTime DT.defaultTimeLocale "%Y-%m-%d %H:%M:%S.%q: " at
+          putText $ Txt.pack dt <> s <> "  " <> d
+          An.setSGR [An.Reset]
+
+  where
+    shouldLog l = CL.logLevelToId l >= CL.logLevelToId minLevel
+

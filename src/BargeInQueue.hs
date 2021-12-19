@@ -26,17 +26,19 @@ import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
 import qualified BargeInQueue.Impl.QueueCmpIO as CQ
 import qualified BargeInQueue.Impl.RepoCmpPsql as CR
 import qualified BargeInQueue.Impl.UuidCmpIO as CUu
+import qualified BargeInQueue.Components.LogCmp as CL
 
 mkBargeInQueue
   :: C.SystemId
   -> Text
   -> CPg.TracePg
+  -> CL.LogLevel
   -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId connStr tracePg = do
+mkBargeInQueue sysId connStr tracePg minLogLevel = do
   -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
-  CL.startTerminalPrinter prnQ
+  CL.startTerminalPrinter minLogLevel prnQ
 
   -- Create enough components so we can query the repo
   let dt = CDt.newDateCmpIO @IO

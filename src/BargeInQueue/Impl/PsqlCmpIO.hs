@@ -104,7 +104,7 @@ runNotify
   -> Text
   -> m ()
 runNotify lg pool traceFlag (CPg.ChanName chanName) s = do
-  when (traceFlag == TraceAll) $ CL.logDebug' lg "SQL:notify" (chanName <> ": " <> s)
+  when (traceFlag == TraceAll) $ CL.logTest' lg "SQL:notify" (chanName <> ": " <> s)
   let name = "notify"
   let sql = Pg.Query . TxtE.encodeUtf8 $ "select null from pg_notify(?, ?)"
   _ <- checkSlowQuery lg name =<<
