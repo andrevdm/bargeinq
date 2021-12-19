@@ -7,6 +7,7 @@ module BargeInQueue.Core
     , WorkTypeId(..)
     , PendingWorkItems(..)
     , QueueWorkItems(..)
+    , SystemConfig(..)
     ) where
 
 import           Verset
@@ -31,3 +32,11 @@ data NewWorkItem = NewWorkItem
   , wiOverrideRetriesLeft :: !(Maybe Int)
   } deriving (Show, Eq)
 
+
+data SystemConfig = SystemConfig
+  { scId :: !UUID
+  , scRequiresGlobalLock :: !Bool
+  , scPollPeriodSeconds :: !Int
+  , scLockedUntil :: !(Maybe UTCTime)
+  , scLockedBy :: !(Maybe Text)
+  } deriving (Show)
