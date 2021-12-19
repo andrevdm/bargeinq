@@ -1,18 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Components.QueueCmp
+module BargeInQueue.Core
     ( NewWorkItem(..)
     , WorkItemId(..)
     , SystemId(..)
     , WorkTypeId(..)
     , PendingWorkItems(..)
     , QueueWorkItems(..)
-    , QueueCmp(..)
     ) where
 
 import           Verset
-import           Data.Time (UTCTime)
-import           Data.UUID (UUID)
 
 newtype QueueHandle = QueueHandle Int deriving (Show, Eq)
 newtype WorkItemId = WorkItemId UUID deriving (Show, Eq)
@@ -33,11 +30,4 @@ data NewWorkItem = NewWorkItem
   , wiOverrideIgnoreUntil :: !(Maybe UTCTime)
   , wiOverrideRetriesLeft :: !(Maybe Int)
   } deriving (Show, Eq)
-
-
-
-data QueueCmp m = QueueCmp
-  { qStartQueue :: !(m ())
-  , qQueueWork :: !(PendingWorkItems -> QueueWorkItems -> m ())
-  }
 

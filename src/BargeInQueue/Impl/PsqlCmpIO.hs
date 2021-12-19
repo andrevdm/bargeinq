@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Impl.PsqlCmpIO
+module BargeInQueue.Impl.PsqlCmpIO
     ( newPsqlCmpIO
     , TracePg(..)
     ) where
@@ -25,8 +25,8 @@ import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
 import qualified UnliftIO.Exception as UE
 
-import qualified Components.PsqlCmp as CPg
-import qualified Components.LogCmp as CL
+import qualified BargeInQueue.Components.PsqlCmp as CPg
+import qualified BargeInQueue.Components.LogCmp as CL
 
 data TracePg
   = TraceStandard

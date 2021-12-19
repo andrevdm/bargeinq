@@ -10,17 +10,19 @@ import           Verset
 import           Control.Concurrent.STM (atomically)
 import qualified Control.Concurrent.STM.TBMQueue as TBMQ
 
-import qualified Components.BargeInQueueCmp as CBq
-import qualified Components.QueueCmp as CQ
-import qualified Impl.BargeInQueueCmpIO as CBq
-import qualified Impl.DateCmpIO as CDt
-import qualified Impl.QueueCmpIO as CQ
-import qualified Impl.PsqlCmpIO as CPg
-import qualified Impl.UuidCmpIO as CUu
-import qualified Impl.LogCmpIO as CL
+
+import qualified BargeInQueue.Core as C
+import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
+import qualified BargeInQueue.Components.QueueCmp as CQ
+import qualified BargeInQueue.Impl.BargeInQueueCmpIO as CBq
+import qualified BargeInQueue.Impl.DateCmpIO as CDt
+import qualified BargeInQueue.Impl.QueueCmpIO as CQ
+import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
+import qualified BargeInQueue.Impl.UuidCmpIO as CUu
+import qualified BargeInQueue.Impl.LogCmpIO as CL
 
 mkBargeInQueue
-  :: CQ.SystemId
+  :: C.SystemId
   -> Text
   -> CPg.TracePg
   -> IO (CBq.BargeInQueueCmp IO)

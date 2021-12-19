@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Impl.QueueCmpIO
+module BargeInQueue.Impl.QueueCmpIO
     ( newQueueCmpIO
     ) where
 
@@ -13,10 +13,11 @@ import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
 
-import qualified Components.LogCmp as CL
-import qualified Components.PsqlCmp as CPg
-import qualified Components.QueueCmp as CQ
-import qualified Threading as Th
+import qualified BargeInQueue.Core as C
+import qualified BargeInQueue.Components.LogCmp as CL
+import qualified BargeInQueue.Components.PsqlCmp as CPg
+import qualified BargeInQueue.Components.QueueCmp as CQ
+import qualified BargeInQueue.Threading as Th
 
 
 newQueueCmpIO
@@ -24,9 +25,9 @@ newQueueCmpIO
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CL.LogCmp m
-  -> CQ.SystemId
+  -> C.SystemId
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp (CQ.SystemId sid) = do
+newQueueCmpIO pgCmp lgCmp (C.SystemId sid) = do
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sid)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
@@ -37,10 +38,10 @@ newQueueCmpIO pgCmp lgCmp (CQ.SystemId sid) = do
 queueWork
   :: forall m.
      (MonadIO m)
-  => CQ.PendingWorkItems
-  -> CQ.QueueWorkItems
+  => C.PendingWorkItems
+  -> C.QueueWorkItems
   -> m ()
-queueWork (CQ.PendingWorkItems pws) (CQ.QueueWorkItems qws) = do
+queueWork (C.PendingWorkItems pws) (C.QueueWorkItems qws) = do
   pass
 
 

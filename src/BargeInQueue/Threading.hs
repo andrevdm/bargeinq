@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Threading
+module BargeInQueue.Threading
     ( Gate(..)
     , newOpenGate
     , newClosedGate

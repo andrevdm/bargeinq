@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Components.LogCmp
+module BargeInQueue.Components.LogCmp
     ( LogCmp(..)
     , LogLevel(..)
     , LogWriter(..)

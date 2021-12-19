@@ -1,14 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Components.BargeInQueueCmp
+module BargeInQueue.Components.BargeInQueueCmp
     ( BargeInQueueCmp(..)
     ) where
 
 import           Verset
 
-import qualified Components.QueueCmp as CQ
+import qualified BargeInQueue.Core as C
 
 data BargeInQueueCmp m = BargeInQueueCmp
-  { bqQueueWork :: !(CQ.PendingWorkItems -> CQ.QueueWorkItems -> m ())
+  { bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
   }

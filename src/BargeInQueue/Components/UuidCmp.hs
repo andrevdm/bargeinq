@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Components.UuidCmp
+module BargeInQueue.Components.UuidCmp
     ( UuidCmp(..)
     ) where
 

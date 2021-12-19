@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Impl.LogCmpIO
+module BargeInQueue.Impl.LogCmpIO
     ( newLogCmpIO
     , createQueueLogWriter
     , startTerminalPrinter
@@ -19,8 +19,8 @@ import qualified Data.Text.Lazy as TxtL
 import qualified Text.Pretty.Simple as Pp
 import qualified System.Console.ANSI as An
 
-import qualified Components.DateCmp as CDt
-import qualified Components.LogCmp as CL
+import qualified BargeInQueue.Components.DateCmp as CDt
+import qualified BargeInQueue.Components.LogCmp as CL
 
 
 newLogCmpIO

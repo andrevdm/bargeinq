@@ -1,14 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Impl.UuidCmpIO
+module BargeInQueue.Impl.UuidCmpIO
     ( newUuidCmpIO
     ) where
 
 import           Verset
 import qualified Data.UUID.V4 as UU
 
-import qualified Components.UuidCmp as CUu
+import qualified BargeInQueue.Components.UuidCmp as CUu
 
 
 newUuidCmpIO :: forall m. (MonadIO m) => CUu.UuidCmp m

@@ -36,20 +36,23 @@ library
 
   hs-source-dirs:      src
   exposed-modules:     Lib
-                     , Components.BargeInQueueCmp
-                     , Components.QueueCmp
-                     , Components.PsqlCmp
-                     , Components.LogCmp
-                     , Components.DateCmp
-                     , Components.UuidCmp
-                     , Impl.BargeInQueueCmpIO
-                     , Impl.QueueCmpIO
-                     , Impl.PsqlCmpIO
-                     , Impl.LogCmpIO
-                     , Impl.DateCmpIO
-                     , Impl.UuidCmpIO
+                     , BargeInQueue.Components.BargeInQueueCmp
+                     , BargeInQueue.Components.QueueCmp
+                     , BargeInQueue.Components.PsqlCmp
+                     , BargeInQueue.Components.LogCmp
+                     , BargeInQueue.Components.RepoCmp
+                     , BargeInQueue.Components.DateCmp
+                     , BargeInQueue.Components.UuidCmp
+                     , BargeInQueue.Impl.BargeInQueueCmpIO
+                     , BargeInQueue.Impl.QueueCmpIO
+                     , BargeInQueue.Impl.PsqlCmpIO
+                     , BargeInQueue.Impl.LogCmpIO
+                     , BargeInQueue.Impl.RepoCmpPsql
+                     , BargeInQueue.Impl.DateCmpIO
+                     , BargeInQueue.Impl.UuidCmpIO
                      , BargeInQueue
-                     , Threading
+                     , BargeInQueue.Core
+                     , BargeInQueue.Threading
   build-depends:       verset
                      , ansi-terminal
                      , text

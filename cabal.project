@@ -3,5 +3,5 @@ packages: .
 source-repository-package
   type: git
   location: https://github.com/andrevdm/verset.git
-  sha: a3c0f445856d963c5ce092a9b34e4097aa604639
+  sha: c01d72eba4a15d85ff11ffd06f708f3542bda8ad
 

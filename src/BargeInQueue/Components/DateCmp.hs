@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Components.DateCmp
+module BargeInQueue.Components.DateCmp
     ( DateCmp(..)
     ) where
 

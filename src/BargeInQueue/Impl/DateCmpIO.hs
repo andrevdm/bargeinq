@@ -1,14 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Impl.DateCmpIO
+module BargeInQueue.Impl.DateCmpIO
     ( newDateCmpIO
     ) where
 
 import           Verset
 import qualified Data.Time as DT
 
-import qualified Components.DateCmp as CDt
+import qualified BargeInQueue.Components.DateCmp as CDt
 
 
 newDateCmpIO :: (MonadIO m) => CDt.DateCmp m

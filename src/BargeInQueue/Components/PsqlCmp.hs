@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Components.PsqlCmp
+module BargeInQueue.Components.PsqlCmp
     ( PsqlCmp(..)
     , ChanName(..)
     ) where

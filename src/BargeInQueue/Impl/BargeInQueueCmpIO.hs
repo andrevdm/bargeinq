@@ -2,18 +2,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Impl.BargeInQueueCmpIO
+module BargeInQueue.Impl.BargeInQueueCmpIO
     ( newBargeInQueueCmpIO
     ) where
 
 import           Verset
 
-import qualified Components.BargeInQueueCmp as CBq
-import qualified Components.QueueCmp as CQ
-import qualified Components.DateCmp as CDt
-import qualified Components.PsqlCmp as CPg
-import qualified Components.UuidCmp as CUu
-import qualified Components.LogCmp as CL
+import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
+import qualified BargeInQueue.Components.QueueCmp as CQ
+import qualified BargeInQueue.Components.DateCmp as CDt
+import qualified BargeInQueue.Components.PsqlCmp as CPg
+import qualified BargeInQueue.Components.UuidCmp as CUu
+import qualified BargeInQueue.Components.LogCmp as CL
 
 newBargeInQueueCmpIO
   :: forall m.
