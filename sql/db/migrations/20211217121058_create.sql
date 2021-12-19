@@ -72,7 +72,7 @@ CREATE TABLE if not exists bq_queue
   created_at timestamp with time zone not null,
   started_at timestamp with time zone null,
   heartbeat_at timestamp with time zone null,
-  active_at timestamp with time zone null,
+  dequeued_at timestamp with time zone null,
 
   CONSTRAINT bq_queue_pkey PRIMARY KEY (qId)
 );

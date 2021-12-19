@@ -83,9 +83,20 @@ tryGetActiveItem
 tryGetActiveItem repoCmp sys = do
   putText "tryGetActive"
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
-    Right Nothing -> pass
-    a -> pPrint a
-  pure False
+    Left e -> do
+      print e --TODO log + error
+      pure True
+
+    Right Nothing -> pure False -- Nothing was returned
+    Right (Just qi) -> do
+      if isJust (qi ^. CR.dqaDequeuedAt)
+        then do
+          --TODO call user func
+          pPrint qi
+          pure True
+        else do
+          --TODO lock timeout expired, log, remove from queue, check retries etc
+          pure True
 
 
 -- | Main poll loop. Calls `fn` when it is time to poll

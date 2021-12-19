@@ -10,6 +10,7 @@ module BargeInQueue.Components.RepoCmp
     , dqaWorkItemId
     , dqaWorkTypeId
     , dqaWorkItemName
+    , dqaDequeuedAt
     ) where
 
 import           Verset
@@ -29,6 +30,7 @@ data DequeuedActiveItem = DequeuedActiveItem
   , _dqaWorkItemId :: !C.WorkItemId
   , _dqaWorkTypeId :: !C.WorkTypeId
   , _dqaWorkItemName :: !Text
+  , _dqaDequeuedAt :: !(Maybe UTCTime)
   } deriving (Show)
 
 

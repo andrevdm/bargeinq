@@ -46,6 +46,7 @@ fetchNextActiveItem pgCmp sys = do
       , r_wiid
       , r_wtid
       , r_wi_name
+      , r_dequeued_at
     from
       bq_fetch_queue(?, ?)
   |]
@@ -53,13 +54,14 @@ fetchNextActiveItem pgCmp sys = do
   CPg.pgQuery pgCmp sql (sysId, sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(qid, piid, wiid, wtid, wiName)] ->
+    Right [(qid, piid, wiid, wtid, wiName, dqa)] ->
       pure . Right . Just $ CR.DequeuedActiveItem
         { CR._dqaQueueId = C.QueueItemId qid
         , CR._dqaPendingItemId = C.PendingWorkItemId piid
         , CR._dqaWorkItemId = C.WorkItemId wiid
         , CR._dqaWorkTypeId = C.WorkTypeId wtid
         , CR._dqaWorkItemName = wiName
+        , CR._dqaDequeuedAt = dqa
         }
     Right _ -> pure . Left $ "Error dequeuing: Invalid data returned"
 

@@ -13,7 +13,7 @@ SET row_security = off;
 -- Name: bq_fetch_queue(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid, _lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text)
+CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid, _lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -47,6 +47,7 @@ BEGIN
         , rwi.wiid
         , rwi.wtid
         , rwi.name as wi_name
+        , rq.dequeued_at
       from
         bq_queue rq
       inner join
@@ -68,7 +69,7 @@ BEGIN
     bq_queue q
   set
       locked_until = now() + (interval '1 second' * _lock_for_seconds)
-    , active_at = now()
+    , dequeued_at = COALESCE(q.dequeued_at, now())
   from
     cte_lock
   inner join
@@ -76,7 +77,7 @@ BEGIN
   on
     cte_data.qid = cte_lock.qid
   returning
-    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name;
+    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at;
 
 END
 $$;
@@ -165,7 +166,7 @@ CREATE TABLE public.bq_queue (
     created_at timestamp with time zone NOT NULL,
     started_at timestamp with time zone,
     heartbeat_at timestamp with time zone,
-    active_at timestamp with time zone
+    dequeued_at timestamp with time zone
 );
 
 
