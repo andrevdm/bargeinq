@@ -5,8 +5,6 @@ module BargeInQueue.Components.QueueCmp
     ) where
 
 import           Verset
-import           Data.Time (UTCTime)
-import           Data.UUID (UUID)
 
 import qualified BargeInQueue.Core as C
 
