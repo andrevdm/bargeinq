@@ -26,6 +26,7 @@ newBargeInQueueCmpIO
   -> CBq.BargeInQueueCmp m
 newBargeInQueueCmpIO qCmp dtCmp uuCmp lgCmp pgCmp =
   CBq.BargeInQueueCmp
-    { CBq.bqQueueWork = CQ.qQueueWork qCmp
+    { CBq.bqVersion = "TODO"
+    , CBq.bqQueueWork = CQ.qQueueWork qCmp
     }
 

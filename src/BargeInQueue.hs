@@ -22,6 +22,7 @@ import qualified BargeInQueue.Components.QueueCmp as CQ
 import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.BargeInQueueCmpIO as CBq
 import qualified BargeInQueue.Impl.DateCmpIO as CDt
+import qualified BargeInQueue.Impl.EnvCmpIO as CE
 import qualified BargeInQueue.Impl.LogCmpIO as CL
 import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
 import qualified BargeInQueue.Impl.QueueCmpIO as CQ
@@ -56,8 +57,9 @@ mkBargeInQueue sysId usrCmp connStr tracePg = do
         else throwString $ "Invalid SystemId returned. Expecting: " <> show sysId <> ", got: " <> show (s ^. C.sysId)
 
   -- Create the rest
+  env <- CE.newEnvCmpIO sysConfig
   let uu = CUu.newUuidCmpIO @IO
-  let q = CQ.newQueueCmpIO @IO pg lg repo sysConfig
+  let q = CQ.newQueueCmpIO @IO pg lg repo usrCmp sysConfig
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
 
 

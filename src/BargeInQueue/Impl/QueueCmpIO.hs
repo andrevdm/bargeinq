@@ -21,6 +21,7 @@ import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
+import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Threading as Th
 
 
@@ -30,14 +31,15 @@ newQueueCmpIO
   => CPg.PsqlCmp m
   -> CL.LogCmp m
   -> CR.RepoCmp m
+  -> CUsr.UserCmp m
   -> C.SystemConfig
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp repoCmp sys = do
+newQueueCmpIO pgCmp lgCmp repoCmp usrCmp sys = do
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp chan
+    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp usrCmp chan
     }
 
 
@@ -58,9 +60,10 @@ startQueue
   -> CPg.PsqlCmp m
   -> CL.LogCmp m
   -> CR.RepoCmp m
+  -> CUsr.UserCmp m
   -> CPg.ChanName
   -> m ()
-startQueue sys pgCmp lgCmp repoCmp chanName = do
+startQueue sys pgCmp lgCmp repoCmp usrCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
@@ -87,11 +90,13 @@ tryGetActiveItem repoCmp sys = do
       print e --TODO log + error
       pure True
 
-    Right Nothing -> pure False -- Nothing was returned
+    Right Nothing ->
+      pure False -- Nothing was returned
+
     Right (Just qi) -> do
       if isJust (qi ^. CR.dqaDequeuedAt)
         then do
-          --TODO call user func
+          --TODO CUsr.usrProcessQueuedItem (qi ^. CR.dqaQueueId) (qi ^. CR.dqqWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName)
           pPrint qi
           pure True
         else do

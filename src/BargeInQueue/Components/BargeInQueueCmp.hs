@@ -10,5 +10,6 @@ import           Verset
 import qualified BargeInQueue.Core as C
 
 data BargeInQueueCmp m = BargeInQueueCmp
-  { bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
+  { bqVersion :: !Text
+  , bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
   }

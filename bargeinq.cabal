@@ -37,6 +37,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
                      , BargeInQueue.Components.BargeInQueueCmp
+                     , BargeInQueue.Components.EnvCmp
                      , BargeInQueue.Components.QueueCmp
                      , BargeInQueue.Components.PsqlCmp
                      , BargeInQueue.Components.LogCmp
@@ -45,6 +46,7 @@ library
                      , BargeInQueue.Components.UserCmp
                      , BargeInQueue.Components.UuidCmp
                      , BargeInQueue.Impl.BargeInQueueCmpIO
+                     , BargeInQueue.Impl.EnvCmpIO
                      , BargeInQueue.Impl.QueueCmpIO
                      , BargeInQueue.Impl.PsqlCmpIO
                      , BargeInQueue.Impl.LogCmpIO
