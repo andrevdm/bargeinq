@@ -49,7 +49,7 @@ mkBargeInQueue sysId connStr tracePg = do
     Left e -> throwString $ Txt.unpack e
     Right Nothing -> throwString $ "BargeInQueue system does not exist: " <> show sysId
     Right (Just s) ->
-      if C.SystemId (s ^. C.sysId) == sysId
+      if s ^. C.sysId == sysId
         then pure s
         else throwString $ "Invalid SystemId returned. Expecting: " <> show sysId <> ", got: " <> show (s ^. C.sysId)
 

@@ -69,7 +69,7 @@ data NewWorkItem = NewWorkItem
 
 
 data SystemConfig = SystemConfig
-  { _sysId :: !UUID
+  { _sysId :: !SystemId
   , _sysRequiresGlobalLock :: !Bool
   , _sysPollPeriodSeconds :: !Int
   , _sysLockedUntil :: !(Maybe UTCTime)

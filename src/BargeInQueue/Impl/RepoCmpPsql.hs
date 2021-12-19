@@ -47,9 +47,10 @@ fetchNextActiveItem pgCmp sys = do
       , r_wtid
       , r_wi_name
     from
-      bq_fetch_queue(?)
+      bq_fetch_queue(?, ?)
   |]
-  CPg.pgQuery pgCmp sql (CPg.Only $ sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
+  let (C.SystemId sysId) = sys ^. C.sysId
+  CPg.pgQuery pgCmp sql (sysId, sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
     Right [(qid, piid, wiid, wtid, wiName)] ->
@@ -84,7 +85,7 @@ listSystems pgCmp = do
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
     Right rs -> pure . Right $ rs <&> \(sid, reqLock, poll, lockUntil, lockedBy) ->
       C.SystemConfig
-        { C._sysId = sid
+        { C._sysId = C.SystemId sid
         , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
@@ -116,7 +117,7 @@ getSystem pgCmp (C.SystemId sysId) = do
     Right [] -> pure . Right $ Nothing
     Right [(sid, reqLock, poll, lockUntil, lockedBy)] ->
       pure . Right . Just $ C.SystemConfig
-        { C._sysId = sid
+        { C._sysId = C.SystemId sid
         , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil

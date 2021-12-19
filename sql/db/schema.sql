@@ -10,10 +10,10 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: bq_fetch_queue(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: bq_fetch_queue(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bq_fetch_queue(_lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text)
+CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid, _lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -23,11 +23,19 @@ BEGIN
   with
     cte_lock as (
       select
-          qid
+          lq.qid
       from
-        bq_queue
+        bq_queue lq
+      inner join
+        bq_pending_work_item lpi
+      on
+        lpi.piid = lq.piid
+      inner join
+        bq_work_item lwi
+      on
+        lwi.system_id = _sys_id
       where
-        (locked_until is null or locked_until < now())
+        (lq.locked_until is null or lq.locked_until < now())
       limit 1
       for update skip locked
     ),

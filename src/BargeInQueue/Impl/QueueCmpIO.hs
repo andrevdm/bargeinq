@@ -29,7 +29,8 @@ newQueueCmpIO
   -> C.SystemConfig
   -> CQ.QueueCmp m
 newQueueCmpIO pgCmp lgCmp sys = do
-  let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText $ sys ^. C.sysId)
+  let (C.SystemId sysId) = sys ^. C.sysId
+  let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
     , CQ.qStartQueue = startQueue sys pgCmp lgCmp chan

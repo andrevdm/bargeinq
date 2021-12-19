@@ -1,5 +1,5 @@
 -- migrate:up
-CREATE OR REPLACE FUNCTION bq_fetch_queue(_lock_for_seconds int)
+CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid, _lock_for_seconds int)
   RETURNS table ( r_qid bigint
                 , r_piid bigint
                 , r_wiid uuid
@@ -15,11 +15,19 @@ BEGIN
   with
     cte_lock as (
       select
-          qid
+          lq.qid
       from
-        bq_queue
+        bq_queue lq
+      inner join
+        bq_pending_work_item lpi
+      on
+        lpi.piid = lq.piid
+      inner join
+        bq_work_item lwi
+      on
+        lwi.system_id = _sys_id
       where
-        (locked_until is null or locked_until < now())
+        (lq.locked_until is null or lq.locked_until < now())
       limit 1
       for update skip locked
     ),
@@ -66,4 +74,4 @@ $BODY$;
 
 
 -- migrate:down
-drop FUNCTION bq_fetch_queue(interval);
+drop FUNCTION bq_fetch_queue(uuid, int);
