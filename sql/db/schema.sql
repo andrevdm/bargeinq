@@ -67,7 +67,8 @@ BEGIN
   update
     bq_queue q
   set
-    locked_until = now() + (interval '1 second' * _lock_for_seconds)
+      locked_until = now() + (interval '1 second' * _lock_for_seconds)
+    , active_at = now()
   from
     cte_lock
   inner join
@@ -163,7 +164,8 @@ CREATE TABLE public.bq_queue (
     locked_until timestamp with time zone,
     created_at timestamp with time zone NOT NULL,
     started_at timestamp with time zone,
-    heartbeat_at timestamp with time zone
+    heartbeat_at timestamp with time zone,
+    active_at timestamp with time zone
 );
 
 

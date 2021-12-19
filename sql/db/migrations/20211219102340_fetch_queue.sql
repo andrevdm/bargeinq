@@ -59,7 +59,8 @@ BEGIN
   update
     bq_queue q
   set
-    locked_until = now() + (interval '1 second' * _lock_for_seconds)
+      locked_until = now() + (interval '1 second' * _lock_for_seconds)
+    , active_at = now()
   from
     cte_lock
   inner join
