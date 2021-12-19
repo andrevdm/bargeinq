@@ -10,8 +10,9 @@ module BargeInQueue.Impl.RepoCmpPsql
     ) where
 
 import           Verset hiding (log)
-import           UnliftIO (MonadUnliftIO)
+import           Control.Lens ((^.))
 import           Text.RawString.QQ (r)
+import           UnliftIO (MonadUnliftIO)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.PsqlCmp as CPg
@@ -27,7 +28,40 @@ newRepoCmpPsql pgCmp =
   CR.RepoCmp
     { CR.rpListSystems = listSystems pgCmp
     , CR.rpGetSystem = getSystem pgCmp
+    , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
     }
+
+
+fetchNextActiveItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.SystemConfig
+  -> m (Either Text (Maybe CR.DequeuedActiveItem))
+fetchNextActiveItem pgCmp sys = do
+  let sql = [r|
+    select
+        r_qid
+      , r_piid
+      , r_wiid
+      , r_wtid
+      , r_wi_name
+    from
+      bq_fetch_queue(?)
+  |]
+  CPg.pgQuery pgCmp sql (CPg.Only $ sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
+    Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
+    Right [] -> pure . Right $ Nothing
+    Right [(qid, piid, wiid, wtid, wiName)] ->
+      pure . Right . Just $ CR.DequeuedActiveItem
+        { CR._dqaQueueId = C.QueueItemId qid
+        , CR._dqaPendingItemId = C.PendingWorkItemId piid
+        , CR._dqaWorkItemId = C.WorkItemId wiid
+        , CR._dqaWorkTypeId = C.WorkTypeId wtid
+        , CR._dqaWorkItemName = wiName
+        }
+    Right _ -> pure . Left $ "Error dequeuing: Invalid data returned"
+
 
 
 listSystems

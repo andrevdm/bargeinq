@@ -3,15 +3,15 @@
 
 module BargeInQueue.Core
     ( NewWorkItem(..)
-    , wiId
-    , wiName
-    , wiSystemId
-    , wiWorkerType
-    , wiGroupId
-    , wiDependsOnGroups
-    , wiDependsOnWorkItem
-    , wiOverrideIgnoreUntil
-    , wiOverrideRetriesLeft
+    , nwiId
+    , nwiName
+    , nwiSystemId
+    , nwiWorkerType
+    , nwiGroupId
+    , nwiDependsOnGroups
+    , nwiDependsOnWorkItem
+    , nwiOverrideIgnoreUntil
+    , nwiOverrideRetriesLeft
 
     , SystemConfig(..)
     , sysId
@@ -20,7 +20,23 @@ module BargeInQueue.Core
     , sysLockedUntil
     , sysLockedBy
 
+    , WorkItem(..)
+    , wiId
+    , wiSystemId
+    , wiName
+    , wiWorkerType
+    , wiIgnoreUntil
+    , wiRetriesLeft
+    , wiCreatedAt
+    , wiGroupId
+    , wiDependsOnGroups
+    , wiDependsOnWorkItem
+    , wiBackoffCount
+    , wiAttempts
+
+    , QueueItemId(..)
     , WorkItemId(..)
+    , PendingWorkItemId(..)
     , SystemId(..)
     , WorkTypeId(..)
     , PendingWorkItems(..)
@@ -30,8 +46,9 @@ module BargeInQueue.Core
 import           Verset
 import           Control.Lens (makeLenses)
 
-newtype QueueHandle = QueueHandle Int deriving (Show, Eq)
+newtype QueueItemId = QueueItemId UUID deriving (Show, Eq)
 newtype WorkItemId = WorkItemId UUID deriving (Show, Eq)
+newtype PendingWorkItemId = PendingWorkItemId UUID deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq)
 newtype WorkTypeId = WorkTypeId UUID deriving (Show, Eq)
 newtype PendingWorkItems = PendingWorkItems [NewWorkItem] deriving (Show, Eq)
@@ -39,15 +56,15 @@ newtype QueueWorkItems = QueueWorkItems [NewWorkItem] deriving (Show, Eq)
 
 
 data NewWorkItem = NewWorkItem
-  { _wiId :: !WorkItemId
-  , _wiName :: !Text
-  , _wiSystemId :: !SystemId
-  , _wiWorkerType :: !WorkTypeId
-  , _wiGroupId :: !(Maybe UUID)
-  , _wiDependsOnGroups :: ![UUID]
-  , _wiDependsOnWorkItem :: ![UUID]
-  , _wiOverrideIgnoreUntil :: !(Maybe UTCTime)
-  , _wiOverrideRetriesLeft :: !(Maybe Int)
+  { _nwiId :: !WorkItemId
+  , _nwiName :: !Text
+  , _nwiSystemId :: !SystemId
+  , _nwiWorkerType :: !WorkTypeId
+  , _nwiGroupId :: !(Maybe UUID)
+  , _nwiDependsOnGroups :: ![UUID]
+  , _nwiDependsOnWorkItem :: ![UUID]
+  , _nwiOverrideIgnoreUntil :: !(Maybe UTCTime)
+  , _nwiOverrideRetriesLeft :: !(Maybe Int)
   } deriving (Show, Eq)
 
 
@@ -60,5 +77,24 @@ data SystemConfig = SystemConfig
   } deriving (Show)
 
 
+data WorkItem = WorkItem
+  { _wiId :: !WorkItemId
+  , _wiSystemId :: !SystemId
+  , _wiName :: !Text
+  , _wiWorkerType :: !WorkTypeId
+  , _wiIgnoreUntil :: !(Maybe UTCTime)
+  , _wiRetriesLeft :: !Int
+  , _wiCreatedAt :: !UTCTime
+  , _wiGroupId :: !(Maybe UUID)
+  , _wiDependsOnGroups :: ![UUID]
+  , _wiDependsOnWorkItem :: ![UUID]
+  , _wiBackoffCount :: !Int
+  , _wiAttempts :: !Int
+  }
+
+
+
+
 makeLenses ''NewWorkItem
+makeLenses ''WorkItem
 makeLenses ''SystemConfig
