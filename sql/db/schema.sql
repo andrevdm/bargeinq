@@ -30,8 +30,14 @@ CREATE FUNCTION public.fn_queue_notify() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 DECLARE
+  r1 text;
 BEGIN
-  PERFORM pg_notify('c' || REPLACE(CAST('qId' AS text), '-', ''), 'trigger');
+  FOR r1 IN select i.system_id::text as system_id from pending_work_item p inner join work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+    LOOP
+      PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
+    END loop;
+  RETURN NEW;
+
   RETURN NEW;
 END;
 $$;
@@ -69,7 +75,7 @@ CREATE TABLE public.pending_work_item (
     wiid uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
     active timestamp without time zone,
-    parent_pending_worker_item bigint NOT NULL
+    parent_pending_worker_item bigint
 );
 
 
@@ -98,8 +104,8 @@ CREATE TABLE public.queue (
     done_at timestamp without time zone,
     active timestamp without time zone,
     heartbeat_at timestamp without time zone,
-    worker_name text NOT NULL,
-    worker_info text NOT NULL,
+    worker_name text,
+    worker_info text,
     cleanup_done timestamp without time zone,
     status_id integer NOT NULL
 );

@@ -83,7 +83,7 @@ CREATE TABLE if not exists pending_work_item
   wiId uuid NOT NULL references work_item(wiId),
   created_at timestamp without time zone not null,
   active timestamp without time zone null,
-  parent_pending_worker_item bigint NOT NULL references pending_work_item(piId),
+  parent_pending_worker_item bigint NULL references pending_work_item(piId),
 
   CONSTRAINT pending_work_item_pkey PRIMARY KEY (piId)
 );
@@ -111,8 +111,8 @@ CREATE TABLE if not exists queue
   done_at timestamp without time zone null,
   active timestamp without time zone null,
   heartbeat_at timestamp without time zone null,
-  worker_name text COLLATE pg_catalog."default" NOT NULL,
-  worker_info text COLLATE pg_catalog."default" NOT NULL,
+  worker_name text COLLATE pg_catalog."default" NULL,
+  worker_info text COLLATE pg_catalog."default" NULL,
   cleanup_done timestamp without time zone null,
   status_id int NOT NULL references queue_status(qsId),
 

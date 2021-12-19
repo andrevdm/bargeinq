@@ -1,8 +1,14 @@
 -- migrate:up
 CREATE OR REPLACE FUNCTION fn_queue_notify() RETURNS trigger AS $$
 DECLARE
+  r1 text;
 BEGIN
-  PERFORM pg_notify('c' || REPLACE(CAST('qId' AS text), '-', ''), 'trigger');
+  FOR r1 IN select i.system_id::text as system_id from pending_work_item p inner join work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+    LOOP
+      PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
+    END loop;
+  RETURN NEW;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
