@@ -55,7 +55,7 @@ mkBargeInQueue sysId connStr tracePg = do
 
   -- Create the rest
   let uu = CUu.newUuidCmpIO @IO
-  let q = CQ.newQueueCmpIO @IO pg lg sysConfig
+  let q = CQ.newQueueCmpIO @IO pg lg repo sysConfig
   let bq = CBq.newBargeInQueueCmpIO q dt uu lg pg
 
 

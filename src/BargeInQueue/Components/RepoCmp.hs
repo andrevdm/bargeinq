@@ -29,7 +29,7 @@ data DequeuedActiveItem = DequeuedActiveItem
   , _dqaWorkItemId :: !C.WorkItemId
   , _dqaWorkTypeId :: !C.WorkTypeId
   , _dqaWorkItemName :: !Text
-  }
+  } deriving (Show)
 
 
 makeLenses ''DequeuedActiveItem

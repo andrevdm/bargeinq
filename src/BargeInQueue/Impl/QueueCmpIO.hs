@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 
 module BargeInQueue.Impl.QueueCmpIO
     ( newQueueCmpIO
@@ -13,10 +14,12 @@ import           Control.Lens ((^.))
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
+import           Text.Pretty.Simple (pPrint)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.PsqlCmp as CPg
+import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
 import qualified BargeInQueue.Threading as Th
 
@@ -26,14 +29,15 @@ newQueueCmpIO
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CL.LogCmp m
+  -> CR.RepoCmp m
   -> C.SystemConfig
   -> CQ.QueueCmp m
-newQueueCmpIO pgCmp lgCmp sys = do
+newQueueCmpIO pgCmp lgCmp repoCmp sys = do
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue sys pgCmp lgCmp chan
+    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp chan
     }
 
 
@@ -53,16 +57,17 @@ startQueue
   => C.SystemConfig
   -> CPg.PsqlCmp m
   -> CL.LogCmp m
+  -> CR.RepoCmp m
   -> CPg.ChanName
   -> m ()
-startQueue sys pgCmp lgCmp chanName = do
+startQueue sys pgCmp lgCmp repoCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
     CL.logDebug' lgCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop pollGate tryGetActiveItem
+  void . UA.async $ runPollLoop pollGate (tryGetActiveItem repoCmp sys)
 
   CL.logDebug lgCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
@@ -72,9 +77,14 @@ startQueue sys pgCmp lgCmp chanName = do
 tryGetActiveItem
   :: forall m.
      (MonadUnliftIO m)
-  => m Bool
-tryGetActiveItem = do
+  => CR.RepoCmp m
+  -> C.SystemConfig
+  -> m Bool
+tryGetActiveItem repoCmp sys = do
   putText "tryGetActive"
+  CR.rpFetchNextActiveItem repoCmp sys >>= \case
+    Right Nothing -> pass
+    a -> pPrint a
   pure False
 
 

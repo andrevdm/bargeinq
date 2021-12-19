@@ -46,9 +46,9 @@ module BargeInQueue.Core
 import           Verset
 import           Control.Lens (makeLenses)
 
-newtype QueueItemId = QueueItemId UUID deriving (Show, Eq)
+newtype QueueItemId = QueueItemId Int deriving (Show, Eq)
 newtype WorkItemId = WorkItemId UUID deriving (Show, Eq)
-newtype PendingWorkItemId = PendingWorkItemId UUID deriving (Show, Eq)
+newtype PendingWorkItemId = PendingWorkItemId Int deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq)
 newtype WorkTypeId = WorkTypeId UUID deriving (Show, Eq)
 newtype PendingWorkItems = PendingWorkItems [NewWorkItem] deriving (Show, Eq)
