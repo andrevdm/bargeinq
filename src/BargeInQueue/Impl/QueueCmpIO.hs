@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module BargeInQueue.Impl.QueueCmpIO
     ( newQueueCmpIO
@@ -14,6 +15,7 @@ import           Control.Lens ((^.))
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
+import qualified UnliftIO.Exception as UE
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.LogCmp as CL
@@ -63,16 +65,16 @@ startQueue
   -> CEnv.EnvCmp m
   -> CPg.ChanName
   -> m ()
-startQueue sys pgCmp lgCmp repoCmp envCmp chanName = do
+startQueue sys pgCmp logCmp repoCmp envCmp chanName = do
   pollGate <- Th.newOpenGate
 
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
-    CL.logTest' lgCmp "LISTEN> " n
+    CL.logTest' logCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop pollGate (tryProcessNextActiveItem repoCmp envCmp sys)
+  void . UA.async $ runPollLoop pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp sys)
 
-  CL.logDebug lgCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
+  CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
 
 
@@ -82,38 +84,44 @@ tryProcessNextActiveItem
      (MonadUnliftIO m)
   => CR.RepoCmp m
   -> CEnv.EnvCmp m
+  -> CL.LogCmp m
   -> C.SystemConfig
   -> m Bool
-tryProcessNextActiveItem repoCmp envCmp sys = do
+tryProcessNextActiveItem repoCmp envCmp logCmp sys = do
   putText "tryGetActive"
   usrCmp <- CEnv.envDemandUser envCmp
 
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
     Right Nothing -> pure False -- Nothing was returned
-    Left e -> errorDequeueing usrCmp e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
+    Left e -> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 
-    -- If the item already had dqaDequeuedAt set then it was previously dequeued and thus has now timed out
+    -- If the item already had dqaDequeuedAt set then it was previously dequeued
+    -- The only way it could be returned here is if the lock period expired
+    -- i.e. if it timed out
     Right (Just qi) -> do
-      if isJust (qi ^. CR.dqaDequeuedAt)
+      if isNothing (qi ^. CR.dqaDequeuedAt)
         then gotNewActiveItem usrCmp qi >> pure True
         else lastLockTimeoutExpiredForActiveItem usrCmp qi >> pure True
 
   where
-    errorDequeueing usrCmp qi = do
-      --TODO log
-      pass
+    errorDequeueing e = do
+      CL.logError' logCmp "Exception dequeuing" e
 
-    gotNewActiveItem usrCmp qi = void . UA.async $ do
-      CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName) >>= \case
-        CUsr.PirSuccess -> do
-          --TODO remove from queue etc
-          pass
-        CUsr.PirError _title _message -> do
-          --TODO log, remove, increment, add
-          pass
+    gotNewActiveItem usrCmp qi =
+      catchUserErrorAsync "user handler" $
+        CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName)
 
-    lastLockTimeoutExpiredForActiveItem usrCmp qi = void . UA.async $ do
-      pass
+    lastLockTimeoutExpiredForActiveItem usrCmp qi = do
+      CL.logDebug logCmp "!!expire"
+      catchUserErrorAsync "Notify work item timeout" (CUsr.usrNotifyWorkItemTimeout usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName))
+      CR.rpDeletePendingWorkItem repoCmp (qi ^. CR.dqaPendingItemId)
+      --TODO promote next work item
+
+    catchUserError n f =
+      UE.catch f (\(e :: SomeException) -> CL.logError' logCmp ("Exception running " <> n) e)
+
+    catchUserErrorAsync n f = void . UA.async $ catchUserError n (void f)
+
 
 
 -- | Main poll loop. Calls `fn` when it is time to poll

@@ -22,6 +22,7 @@ data RepoCmp m = RepoCmp
   { rpListSystems :: !(m (Either Text [C.SystemConfig]))
   , rpGetSystem :: !(C.SystemId -> m (Either Text (Maybe C.SystemConfig)))
   , rpFetchNextActiveItem :: !(C.SystemConfig -> m (Either Text (Maybe DequeuedActiveItem)))
+  , rpDeletePendingWorkItem :: !(C.PendingWorkItemId -> m (Either Text ()))
   }
 
 data DequeuedActiveItem = DequeuedActiveItem

@@ -18,5 +18,6 @@ data ProcessItemResult
 
 data UserCmp m = UserCmp
   { usrQueueStarting :: m ()
-  , usrProcessActiveItem :: !(CR.QueueItemId -> CR.WorkItemId -> CR.WorkTypeId -> Text -> m ProcessItemResult)
+  , usrProcessActiveItem :: !(CR.QueueItemId -> CR.WorkItemId -> CR.WorkTypeId -> Text -> m ())
+  , usrNotifyWorkItemTimeout :: !(CR.QueueItemId -> CR.WorkItemId -> CR.WorkTypeId -> Text -> m ())
   }

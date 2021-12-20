@@ -35,7 +35,7 @@ run = do
   bq <- Bq.mkBargeInQueue
           testSysId
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
-          CPg.TraceStandard
+          CPg.TraceNone -- Standard
           CL.LevelDebug
   let usrCmp = newUserCmpDemo @IO bq
   CBq.bqStartQueue bq usrCmp
@@ -89,5 +89,8 @@ newUserCmpDemo _bq =
     { CUsr.usrQueueStarting = putText "~~queue starting"
     , CUsr.usrProcessActiveItem = \qid _wid _wtid wtName -> do
         putText $ "~~Processing item " <> show qid <> ", for " <> wtName
-        pure CUsr.PirSuccess
+        --TODO pure CUsr.PirSuccess
+    , CUsr.usrNotifyWorkItemTimeout = \qid _wid _wtid wtName -> do
+        putText $ "~~Work item timeout " <> show qid <> ", for " <> wtName
+        --TODO pure CUsr.PirSuccess
     }
