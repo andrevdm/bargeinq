@@ -31,7 +31,29 @@ newRepoCmpPsql pgCmp =
     , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
     , CR.rpDeletePendingWorkItem = deletePendingWorkItem pgCmp
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
+    , CR.rpExpireQueueItem = expireQueueItem pgCmp
     }
+
+
+expireQueueItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.QueueItemId
+  -> m (Either Text ())
+expireQueueItem pgCmp (C.QueueItemId qid) = do
+  let sql = [r|
+    update
+      bq_queue
+    set
+      locked_until = null
+    where
+      qid = ?
+  |]
+  CPg.pgExecute pgCmp sql (CPg.Only qid) "queue_item.expire" >>= \case
+    Left e -> pure . Left $ "Exception expiring queue item:\n" <> show e
+    Right _ -> pure . Right $ ()
+
 
 
 deleteWorkItem

@@ -24,6 +24,7 @@ data RepoCmp m = RepoCmp
   , rpFetchNextActiveItem :: !(C.SystemConfig -> m (Either Text (Maybe DequeuedActiveItem)))
   , rpDeletePendingWorkItem :: !(C.PendingWorkItemId -> m (Either Text ()))
   , rpDeleteWorkItem :: !(C.WorkItemId -> m (Either Text ()))
+  , rpExpireQueueItem :: !(C.QueueItemId -> m (Either Text ()))
   }
 
 data DequeuedActiveItem = DequeuedActiveItem

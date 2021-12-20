@@ -91,6 +91,8 @@ newUserCmpDemo bq =
     , CUsr.usrProcessActiveItem = \qid wid _wtid wtName -> do
         putText $ "~~Processing item " <> show qid <> ", for " <> wtName
         CBq.bqSetWorkItemDone bq wid
+        --CBq.bqExpreQueueItem bq qid
+
 
     , CUsr.usrNotifyWorkItemTimeout = \qid _wid _wtid wtName -> do
         putText $ "~~Work item timeout " <> show qid <> ", for " <> wtName
