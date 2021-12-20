@@ -44,7 +44,7 @@ mkBargeInQueue sysId connStr tracePg minLogLevel = do
   let dt = CDt.newDateCmpIO @IO
   let lg = CL.newLogCmpIO @IO [termWriter] dt
   pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
-  let repo = CR.newRepoCmpPsql pg
+  let repo = CR.newRepoCmpPsql pg dt
 
   -- Fetch the system config
   sysConfig <- CR.rpGetSystem repo sysId >>= \case

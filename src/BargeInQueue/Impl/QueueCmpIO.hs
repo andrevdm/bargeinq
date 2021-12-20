@@ -114,8 +114,9 @@ tryProcessNextActiveItem repoCmp envCmp logCmp sys = do
     lastLockTimeoutExpiredForActiveItem usrCmp qi = do
       CL.logDebug logCmp "!!expire"
       catchUserErrorAsync "Notify work item timeout" (CUsr.usrNotifyWorkItemTimeout usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName))
+      void $ CR.rpPauseWorkItem repoCmp (qi ^. CR.dqaWorkItemId) 5
       CR.rpDeletePendingWorkItem repoCmp (qi ^. CR.dqaPendingItemId)
-      --TODO promote next work item
+      --TODO retryWorkItem repoCmp usrCmp logCmp sys (qi ^. CR.dqaWorkItemId)
 
     catchUserError n f =
       UE.catch f (\(e :: SomeException) -> CL.logError' logCmp ("Exception running " <> n) e)

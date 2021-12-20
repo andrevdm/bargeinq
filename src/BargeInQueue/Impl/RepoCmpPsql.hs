@@ -11,10 +11,12 @@ module BargeInQueue.Impl.RepoCmpPsql
 
 import           Verset hiding (log)
 import           Control.Lens ((^.))
+import qualified Data.Time as DT
 import           Text.RawString.QQ (r)
 import           UnliftIO (MonadUnliftIO)
 
 import qualified BargeInQueue.Core as C
+import qualified BargeInQueue.Components.DateCmp as CDt
 import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.RepoCmp as CR
 
@@ -23,8 +25,9 @@ newRepoCmpPsql
   :: forall m.
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
+  -> CDt.DateCmp m
   -> CR.RepoCmp m
-newRepoCmpPsql pgCmp =
+newRepoCmpPsql pgCmp dtCmp =
   CR.RepoCmp
     { CR.rpListSystems = listSystems pgCmp
     , CR.rpGetSystem = getSystem pgCmp
@@ -32,7 +35,33 @@ newRepoCmpPsql pgCmp =
     , CR.rpDeletePendingWorkItem = deletePendingWorkItem pgCmp
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
     , CR.rpExpireQueueItem = expireQueueItem pgCmp
+    , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
     }
+
+
+pauseWorkItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> CDt.DateCmp m
+  -> C.WorkItemId
+  -> NominalDiffTime
+  -> m (Either Text ())
+pauseWorkItem pgCmp dtCmp (C.WorkItemId wiid) seconds = do
+  let sql = [r|
+    update
+      bq_work_item
+    set
+      ignore_until = ?
+    where
+      wiid = ?
+      and (ignore_until is null or ignore_until < ?)
+  |]
+  now <- CDt.dtGetLocalDate dtCmp
+  let till = DT.addLocalTime seconds now
+  CPg.pgExecute pgCmp sql (till, wiid, till) "work_item.ignore" >>= \case
+    Left e -> pure . Left $ "Exception ignoring work item:\n" <> show e
+    Right _ -> pure . Right $ ()
 
 
 expireQueueItem

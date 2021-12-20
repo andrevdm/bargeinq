@@ -25,6 +25,7 @@ data RepoCmp m = RepoCmp
   , rpDeletePendingWorkItem :: !(C.PendingWorkItemId -> m (Either Text ()))
   , rpDeleteWorkItem :: !(C.WorkItemId -> m (Either Text ()))
   , rpExpireQueueItem :: !(C.QueueItemId -> m (Either Text ()))
+  , rpPauseWorkItem :: !(C.WorkItemId -> NominalDiffTime -> m (Either Text ()))
   }
 
 data DequeuedActiveItem = DequeuedActiveItem
