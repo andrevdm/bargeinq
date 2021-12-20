@@ -34,10 +34,11 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
     , CR.rpDeletePendingWorkItem = deletePendingWorkItem pgCmp
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
-    , CR.rpExpireQueueItem = expireQueueItem pgCmp
+    , CR.rpExpireQueueItem = expireQueueItem pgCmp "expiring"
+    , CR.rpFailQueueItem = expireQueueItem pgCmp "failing"
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
     , CR.rpGetWorkItem = getWorkItem pgCmp
-    , CR.rpGetWorkType = getWorkType pgCmp dtCmp
+    , CR.rpGetWorkType = getWorkType pgCmp
     , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
     , CR.rpCreatePendingWorkItem = createPendingWorkItem pgCmp dtCmp
     , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
@@ -121,10 +122,9 @@ getWorkType
   :: forall m.
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
-  -> CDt.DateCmp m
   -> C.WorkTypeId
   -> m (Either Text C.WorkType)
-getWorkType pgCmp dtCmp (C.WorkTypeId wtid) = do
+getWorkType pgCmp (C.WorkTypeId wtid) = do
   let sql = [r|
     select
         system_id
@@ -234,9 +234,10 @@ expireQueueItem
   :: forall m.
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
+  -> Text
   -> C.QueueItemId
   -> m (Either Text ())
-expireQueueItem pgCmp (C.QueueItemId qid) = do
+expireQueueItem pgCmp reason (C.QueueItemId qid) = do
   let sql = [r|
     update
       bq_queue
@@ -245,8 +246,8 @@ expireQueueItem pgCmp (C.QueueItemId qid) = do
     where
       qid = ?
   |]
-  CPg.pgExecute pgCmp sql (CPg.Only qid) "queue_item.expire" >>= \case
-    Left e -> pure . Left $ "Exception expiring queue item:\n" <> show e
+  CPg.pgExecute pgCmp sql (CPg.Only qid) ("queue_item." <> reason) >>= \case
+    Left e -> pure . Left $ "Exception " <> reason <> " queue item:\n" <> show e
     Right _ -> pure . Right $ ()
 
 

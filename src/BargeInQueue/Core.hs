@@ -122,7 +122,7 @@ data WorkItem = WorkItem
   , _wiDependsOnWorkItem :: ![WorkItemId]
   , _wiBackoffCount :: !Int
   , _wiAttempts :: !Int
-  , _wiData :: !Text
+  , _wiData :: !(Maybe Text)
   }
 
 

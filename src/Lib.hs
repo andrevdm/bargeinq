@@ -85,16 +85,22 @@ run = do
 
 
 newUserCmpDemo :: (MonadUnliftIO m) => CBq.BargeInQueueCmp m -> CUsr.UserCmp m
-newUserCmpDemo bq =
+newUserCmpDemo _bq =
   CUsr.UserCmp
     { CUsr.usrQueueStarting = putText "~~queue starting"
 
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
         --TODO CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
-        --CBq.bqExpreQueueItem bq qid
+        --CBq.bqFailQueueItem bq qid
 
 
     , CUsr.usrNotifyWorkItemTimeout = \dqi -> do
         putText $ "~~Work item timeout " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName)
+
+    , CUsr.usrNotifyRetrypingWorkItem = \qid wi -> do
+        putText $ "~~Retrying" <> show qid <> ", " <> fromMaybe "" (wi ^. C.wiData)
+
+    , CUsr.usrNotifyWorkItemFailedNoMoreRetries = \wi ->
+        putText $ "~~No more retries" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)
     }

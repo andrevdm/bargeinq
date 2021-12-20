@@ -49,10 +49,16 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
           Right _ -> pass
           Left e -> CL.logError' logCmp ("Error deleting work item: " <> show wi) e
 
-    , CBq.bqExpreQueueItem = \qi -> do
+    , CBq.bqFailQueueItem = \qi -> do
+        CL.logInfo' logCmp "User manually failed queue item" qi
+        CR.rpFailQueueItem repoCmp qi >>= \case
+          Right _ -> pass
+          Left e -> CL.logError' logCmp ("Error manually failing queue item: " <> show qi) e
+
+    , CBq.bqExpireQueueItem = \qi -> do
         CL.logInfo' logCmp "User manually expired queue item" qi
         CR.rpExpireQueueItem repoCmp qi >>= \case
           Right _ -> pass
-          Left e -> CL.logError' logCmp ("Error deleting queue item: " <> show qi) e
+          Left e -> CL.logError' logCmp ("Error manually expiring queue item: " <> show qi) e
     }
 

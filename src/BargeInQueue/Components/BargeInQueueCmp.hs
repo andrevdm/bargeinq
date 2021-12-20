@@ -14,5 +14,6 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqStartQueue :: !(CUsr.UserCmp m -> m ())
   , bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
   , bqSetWorkItemDone :: !(C.WorkItemId -> m ())
-  , bqExpreQueueItem :: !(C.QueueItemId -> m ())
+  , bqExpireQueueItem :: !(C.QueueItemId -> m ())
+  , bqFailQueueItem :: !(C.QueueItemId -> m ())
   }

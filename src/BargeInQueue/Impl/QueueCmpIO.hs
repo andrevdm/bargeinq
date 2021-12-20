@@ -12,8 +12,7 @@ import           Verset hiding (threadDelay)
 import qualified Data.Text as Txt
 import qualified Data.Time as DT
 import qualified Data.UUID as UU
-import qualified Data.UUID.V4 as UU
-import           Control.Lens ((^.), (.~), (?~), (%~))
+import           Control.Lens ((^.), (?~), (%~))
 import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
@@ -145,7 +144,7 @@ retryWorkItem
   -> C.SystemConfig
   -> C.DequeuedActiveItem
   -> m ()
-retryWorkItem repoCmp usrCmp logCmp dtCmp envCmp sys dqi = do
+retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
   wi <- CR.rpGetWorkItem repoCmp (dqi ^. C.dqaWorkItemId) >>= \case
     Left e -> UE.throwString . Txt.unpack $ "Error running retry for " <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
     Right r -> pure r
@@ -173,23 +172,31 @@ retryWorkItem repoCmp usrCmp logCmp dtCmp envCmp sys dqi = do
                    & C.wiIgnoreUntil ?~ DT.addUTCTime 10 now
 
       -- Update the work item
-      CR.rpUpdateWorkItemForRetry repoCmp wi2
+      CR.rpUpdateWorkItemForRetry repoCmp wi2 >>= \case
+        Right _ -> pass
+        Left e -> UE.throwString . Txt.unpack $ "Error updating work item for retry" <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
 
       -- Create a pending item for the work item
       piid <- CR.rpCreatePendingWorkItem repoCmp (wi ^. C.wiId) >>= \case
         Right p -> pure p
-        Left e -> undefined
+        Left e -> UE.throwString . Txt.unpack $ "Error creating pending item for retry" <> show (wi ^. C.wiId) <> "\n" <> e
 
       -- Queue to make it active but locked for the backoff period
       let backoffUntil = DT.addUTCTime (getBackoff (wt ^. C.wtDefaultBackoffSeconds) (wi ^. C.wiAttempts) 120) now
 
-      _ <- CR.rpCreateQueueItem repoCmp piid backoffUntil
+      qid <- CR.rpCreateQueueItem repoCmp piid backoffUntil >>= \case
+        Right q -> pure q
+        Left e -> UE.throwString . Txt.unpack $ "Error creating queue item for retry" <> show piid <> "\n" <> e
 
-      pass -- TODO undefined
+      CUsr.usrNotifyRetrypingWorkItem usrCmp qid wi
+
 
     noMoreRetries wi = do
-      CR.rpDeleteWorkItem repoCmp $ wi ^. C.wiId
-      pass --TODO undefined
+      CR.rpDeleteWorkItem repoCmp (wi ^. C.wiId) >>= \case
+        Right _ -> pass
+        Left e -> UE.throwString . Txt.unpack $ "Error delete working item, no more retries: " <> show (wi ^. C.wiId) <> "\n" <> e
+
+      CUsr.usrNotifyWorkItemFailedNoMoreRetries usrCmp wi
 
 
 getBackoff :: [Int] -> Int -> Int -> NominalDiffTime

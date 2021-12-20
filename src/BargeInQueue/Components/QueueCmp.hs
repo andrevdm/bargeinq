@@ -4,8 +4,6 @@ module BargeInQueue.Components.QueueCmp
     ( QueueCmp(..)
     ) where
 
-import           Verset
-
 import qualified BargeInQueue.Core as C
 
 
