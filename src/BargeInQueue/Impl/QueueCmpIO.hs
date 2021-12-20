@@ -70,46 +70,50 @@ startQueue sys pgCmp lgCmp repoCmp envCmp chanName = do
     CL.logTest' lgCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop pollGate (tryGetActiveItem repoCmp envCmp sys)
+  void . UA.async $ runPollLoop pollGate (tryProcessNextActiveItem repoCmp envCmp sys)
 
   CL.logDebug lgCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
 
 
 -- | See if there is actually an item to work with
-tryGetActiveItem
+tryProcessNextActiveItem
   :: forall m.
      (MonadUnliftIO m)
   => CR.RepoCmp m
   -> CEnv.EnvCmp m
   -> C.SystemConfig
   -> m Bool
-tryGetActiveItem repoCmp envCmp sys = do
+tryProcessNextActiveItem repoCmp envCmp sys = do
   putText "tryGetActive"
   usrCmp <- CEnv.envDemandUser envCmp
 
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
-    Left e -> do
-      print e --TODO log + error
-      pure True
+    Right Nothing -> pure False -- Nothing was returned
+    Left e -> errorDequeueing usrCmp e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 
-    Right Nothing ->
-      pure False -- Nothing was returned
-
+    -- If the item already had dqaDequeuedAt set then it was previously dequeued and thus has now timed out
     Right (Just qi) -> do
       if isJust (qi ^. CR.dqaDequeuedAt)
-        then do
-          CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName) >>= \case
-            CUsr.PirSuccess -> do
-              --TODO remove from queue etc
-              pure True
-            CUsr.PirError _title _message -> do
-              --TODO log, remove, increment, add
-              pure False
+        then gotNewActiveItem usrCmp qi >> pure True
+        else lastLockTimeoutExpiredForActiveItem usrCmp qi >> pure True
 
-        else do
-          --TODO lock timeout expired, log, remove from queue, check retries etc
-          pure True
+  where
+    errorDequeueing usrCmp qi = do
+      --TODO log
+      pass
+
+    gotNewActiveItem usrCmp qi = void . UA.async $ do
+      CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName) >>= \case
+        CUsr.PirSuccess -> do
+          --TODO remove from queue etc
+          pass
+        CUsr.PirError _title _message -> do
+          --TODO log, remove, increment, add
+          pass
+
+    lastLockTimeoutExpiredForActiveItem usrCmp qi = void . UA.async $ do
+      pass
 
 
 -- | Main poll loop. Calls `fn` when it is time to poll
