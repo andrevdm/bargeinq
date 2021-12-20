@@ -37,7 +37,6 @@ CREATE TABLE if not exists bq_work_item
   retries_left int NOT NULL,
   created_at timestamp with time zone not null,
   group_id uuid NULL,
-  depends_on_groups uuid[] NULL,
   depends_on_work_item uuid[] NULL,
   backoff_count int NOT NULL,
   attempts int NOT NULL,

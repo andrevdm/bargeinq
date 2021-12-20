@@ -200,7 +200,6 @@ CREATE TABLE public.bq_work_item (
     retries_left integer NOT NULL,
     created_at timestamp with time zone NOT NULL,
     group_id uuid,
-    depends_on_groups uuid[],
     depends_on_work_item uuid[],
     backoff_count integer NOT NULL,
     attempts integer NOT NULL,
