@@ -58,5 +58,5 @@ mkBargeInQueue sysId connStr tracePg minLogLevel = do
   -- Create the rest
   env <- CE.newEnvCmpIO sysConfig
   let uu = CUu.newUuidCmpIO @IO
-  let q = CQ.newQueueCmpIO @IO pg lg repo env sysConfig
+  let q = CQ.newQueueCmpIO @IO pg lg repo env dt sysConfig
   pure $ CBq.newBargeInQueueCmpIO q dt uu lg pg env repo

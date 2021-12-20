@@ -91,7 +91,7 @@ newUserCmpDemo bq =
 
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
-        CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
+        --TODO CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
         --CBq.bqExpreQueueItem bq qid
 
 

@@ -17,5 +17,10 @@ data RepoCmp m = RepoCmp
   , rpDeleteWorkItem :: !(C.WorkItemId -> m (Either Text ()))
   , rpExpireQueueItem :: !(C.QueueItemId -> m (Either Text ()))
   , rpPauseWorkItem :: !(C.WorkItemId -> NominalDiffTime -> m (Either Text ()))
+  , rpGetWorkItem :: !(C.WorkItemId -> m (Either Text C.WorkItem))
+  , rpGetWorkType :: !(C.WorkTypeId -> m (Either Text C.WorkType))
+  , rpUpdateWorkItemForRetry :: !(C.WorkItem -> m (Either Text ()))
+  , rpCreatePendingWorkItem :: !(C.WorkItemId -> m (Either Text C.PendingWorkItemId))
+  , rpCreateQueueItem :: !(C.PendingWorkItemId -> UTCTime -> m (Either Text C.QueueItemId))
   }
 

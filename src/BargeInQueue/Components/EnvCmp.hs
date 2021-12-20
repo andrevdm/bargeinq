@@ -5,6 +5,7 @@ module BargeInQueue.Components.EnvCmp
     ) where
 
 import           Verset
+
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.UserCmp as CUsr
 
@@ -13,6 +14,7 @@ data EnvCmp m = EnvCmp
   { envIsStarted :: !(m Bool)
   , envSetStarted :: !(CUsr.UserCmp m -> m ())
   , envSystem :: !C.SystemConfig
-
   , envDemandUser :: !(m (CUsr.UserCmp m)) -- ^ Gets the UserCmp or throws if one does not exist
+  , envGetCachedWorkType :: !(C.WorkTypeId -> m (Maybe C.WorkType))
+  , envCacheWorkType :: !(C.WorkType -> m ())
   }

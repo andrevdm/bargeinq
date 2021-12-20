@@ -36,7 +36,173 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
     , CR.rpExpireQueueItem = expireQueueItem pgCmp
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
+    , CR.rpGetWorkItem = getWorkItem pgCmp
+    , CR.rpGetWorkType = getWorkType pgCmp dtCmp
+    , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
+    , CR.rpCreatePendingWorkItem = createPendingWorkItem pgCmp dtCmp
+    , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
     }
+
+
+
+updateWorkItemForRetry
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.WorkItem
+  -> m (Either Text ())
+updateWorkItemForRetry pgCmp wi = do
+  let sql = [r|
+    update
+      bq_work_item
+    set
+        retries_left = ?
+      , ignore_until = ?
+      , attempts = ?
+    where
+      wiid = ?
+  |]
+  let (C.WorkItemId wiid) = wi ^. C.wiId
+  CPg.pgExecute pgCmp sql (wi ^. C.wiRetriesLeft, wi ^. C.wiIgnoreUntil, wi ^. C.wiAttempts, wiid) "work_item.updateForRetry" >>= \case
+    Left e -> pure . Left $ "Exception updating work update for update:\n" <> show e
+    Right _ -> pure . Right $ ()
+
+
+
+createPendingWorkItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> CDt.DateCmp m
+  -> C.WorkItemId
+  -> m (Either Text C.PendingWorkItemId)
+createPendingWorkItem pgCmp dtCmp (C.WorkItemId wiid) = do
+  let sql = [r|
+    insert into bq_pending_work_item
+      (wiid, created_at)
+    values
+      (?, ?)
+    returning
+      piid
+  |]
+  now <- CDt.dtGetDate dtCmp
+  CPg.pgQuery pgCmp sql (wiid, now) "pendingItem.create" >>= \case
+    Left e -> pure . Left $ "Exception creating pending work item:" <> show wiid <> "\n" <> show e
+    Right [CPg.Only piid] -> pure . Right . C.PendingWorkItemId $ piid
+    Right _ -> pure . Left $ "Error creating pending work item: Invalid data returned"
+
+
+createQueueItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> CDt.DateCmp m
+  -> C.PendingWorkItemId
+  -> UTCTime
+  -> m (Either Text C.QueueItemId)
+createQueueItem pgCmp dtCmp (C.PendingWorkItemId piid) lockUntil = do
+  let sql = [r|
+    insert into bq_queue
+      (piid, created_at, locked_until)
+    values
+      (?, ?, ?)
+    returning
+      qid
+  |]
+  now <- CDt.dtGetDate dtCmp
+  CPg.pgQuery pgCmp sql (piid, now, lockUntil) "queue.create" >>= \case
+    Left e -> pure . Left $ "Exception creating queue item:" <> show piid <> "\n" <> show e
+    Right [CPg.Only qid] -> pure . Right . C.QueueItemId $ qid
+    Right _ -> pure . Left $ "Error creating queue item: Invalid data returned"
+
+
+
+getWorkType
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> CDt.DateCmp m
+  -> C.WorkTypeId
+  -> m (Either Text C.WorkType)
+getWorkType pgCmp dtCmp (C.WorkTypeId wtid) = do
+  let sql = [r|
+    select
+        system_id
+      , name
+      , default_retries
+      , default_backoff_seconds
+      , default_heartbeat_check_period
+      , default_exec_environment
+      , dequeue_lock_period_seconds
+    from
+      bq_work_type
+    where
+      wtid = ?
+  |]
+  CPg.pgQuery pgCmp sql (CPg.Only wtid) "workType.fetch" >>= \case
+    Left e -> pure . Left $ "Exception fetching work type:" <> show wtid <> "\n" <> show e
+    Right [] -> pure . Left $ "Work type does not exist, fetching work type:" <> show wtid
+    Right [(sysId, name, defRetries, CPg.PGArray defBackoff, defHeart, defEnv, defLock)] ->
+      pure . Right $ C.WorkType
+        { C._wtId = C.WorkTypeId wtid
+        , C._wtSystemId = C.SystemId sysId
+        , C._wtName = name
+        , C._wtDefaultRetries = defRetries
+        , C._wtDefaultBackoffSeconds = defBackoff
+        , C._wtDefaultHeartbeatCheckPeriod = defHeart
+        , C._wtDefaultExecEnvironment = defEnv
+        , C._wtDequeueLockPeriodSeconds = defLock
+        }
+    Right _ -> pure . Left $ "Error fetching work type: Invalid data returned"
+
+
+getWorkItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.WorkItemId
+  -> m (Either Text C.WorkItem)
+getWorkItem pgCmp (C.WorkItemId wiid) = do
+  let sql = [r|
+    select
+        system_id
+      , name
+      , wtid
+      , ignore_until
+      , retries_left
+      , created_at
+      , group_id
+      , depends_on_groups
+      , depends_on_work_item
+      , backoff_count
+      , attempts
+      , work_data
+    from
+      bq_work_item
+    where
+      wiid = ?
+  |]
+  CPg.pgQuery pgCmp sql (CPg.Only wiid) "workItem.fetch" >>= \case
+    Left e -> pure . Left $ "Exception fetching work item:" <> show wiid <> "\n" <> show e
+    Right [] -> pure . Left $ "Work item does not exist, fetching work item:" <> show wiid
+    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, dependsOnGroups, dependsOnWorkItems, backoffCount, attempts, workData)] ->
+      pure . Right $ C.WorkItem
+        { C._wiId = C.WorkItemId wiid
+        , C._wiSystemId = C.SystemId sysId
+        , C._wiName = name
+        , C._wiWorkerTypeId = C.WorkTypeId wtid
+        , C._wiIgnoreUntil = ignoreUntil
+        , C._wiRetriesLeft = retriesLeft
+        , C._wiCreatedAt = createdAt
+        , C._wiGroupId = C.GroupId <$> groupId
+        , C._wiDependsOnGroups = C.GroupId <$> maybe [] (\(CPg.PGArray a) -> a) dependsOnGroups
+        , C._wiDependsOnWorkItem = C.WorkItemId <$> maybe [] (\(CPg.PGArray a) -> a) dependsOnWorkItems
+        , C._wiBackoffCount = backoffCount
+        , C._wiAttempts = attempts
+        , C._wiData = workData
+        }
+    Right _ -> pure . Left $ "Error fetching work item: Invalid data returned"
+
 
 
 pauseWorkItem
