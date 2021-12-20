@@ -7,7 +7,7 @@ module BargeInQueue.Components.UserCmp
 
 import           Verset
 
-import qualified BargeInQueue.Core as CR
+import qualified BargeInQueue.Core as C
 
 
 data ProcessItemResult
@@ -18,6 +18,6 @@ data ProcessItemResult
 
 data UserCmp m = UserCmp
   { usrQueueStarting :: m ()
-  , usrProcessActiveItem :: !(CR.QueueItemId -> CR.WorkItemId -> CR.WorkTypeId -> Text -> m ())
-  , usrNotifyWorkItemTimeout :: !(CR.QueueItemId -> CR.WorkItemId -> CR.WorkTypeId -> Text -> m ())
+  , usrProcessActiveItem :: !(C.DequeuedActiveItem -> m ())
+  , usrNotifyWorkItemTimeout :: !(C.DequeuedActiveItem -> m ())
   }

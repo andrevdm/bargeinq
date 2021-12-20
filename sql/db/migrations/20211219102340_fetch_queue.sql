@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid, _lock_for_seconds int)
                 , r_wtid uuid
                 , r_wi_name text
                 , r_dequeued_at timestamp with time zone
+                , r_work_data text
                 )
   LANGUAGE 'plpgsql'
 AS $BODY$
@@ -41,6 +42,7 @@ BEGIN
         , rwi.wtid
         , rwi.name as wi_name
         , rq.dequeued_at
+        , rwi.work_data
       from
         bq_queue rq
       inner join
@@ -70,7 +72,7 @@ BEGIN
   on
     cte_data.qid = cte_lock.qid
   returning
-    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at;
+    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at, cte_data.work_data;
 
 END
 $BODY$;

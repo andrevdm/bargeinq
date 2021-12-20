@@ -129,7 +129,7 @@ fetchNextActiveItem
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> C.SystemConfig
-  -> m (Either Text (Maybe CR.DequeuedActiveItem))
+  -> m (Either Text (Maybe C.DequeuedActiveItem))
 fetchNextActiveItem pgCmp sys = do
   let sql = [r|
     select
@@ -139,6 +139,7 @@ fetchNextActiveItem pgCmp sys = do
       , r_wtid
       , r_wi_name
       , r_dequeued_at
+      , r_work_data
     from
       bq_fetch_queue(?, ?)
   |]
@@ -146,14 +147,15 @@ fetchNextActiveItem pgCmp sys = do
   CPg.pgQuery pgCmp sql (sysId, sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(qid, piid, wiid, wtid, wiName, dqa)] ->
-      pure . Right . Just $ CR.DequeuedActiveItem
-        { CR._dqaQueueId = C.QueueItemId qid
-        , CR._dqaPendingItemId = C.PendingWorkItemId piid
-        , CR._dqaWorkItemId = C.WorkItemId wiid
-        , CR._dqaWorkTypeId = C.WorkTypeId wtid
-        , CR._dqaWorkItemName = wiName
-        , CR._dqaDequeuedAt = dqa
+    Right [(qid, piid, wiid, wtid, wiName, dqa, dqw)] ->
+      pure . Right . Just $ C.DequeuedActiveItem
+        { C._dqaQueueId = C.QueueItemId qid
+        , C._dqaPendingItemId = C.PendingWorkItemId piid
+        , C._dqaWorkItemId = C.WorkItemId wiid
+        , C._dqaWorkTypeId = C.WorkTypeId wtid
+        , C._dqaWorkItemName = wiName
+        , C._dqaDequeuedAt = dqa
+        , C._dqaWorkData = dqw
         }
     Right _ -> pure . Left $ "Error dequeuing: Invalid data returned"
 

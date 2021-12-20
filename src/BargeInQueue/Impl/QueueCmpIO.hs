@@ -98,24 +98,24 @@ tryProcessNextActiveItem repoCmp envCmp logCmp sys = do
     -- If the item already had dqaDequeuedAt set then it was previously dequeued
     -- The only way it could be returned here is if the lock period expired
     -- i.e. if it timed out
-    Right (Just qi) -> do
-      if isNothing (qi ^. CR.dqaDequeuedAt)
-        then gotNewActiveItem usrCmp qi >> pure True
-        else lastLockTimeoutExpiredForActiveItem usrCmp qi >> pure True
+    Right (Just dqi) -> do
+      if isNothing (dqi ^. C.dqaDequeuedAt)
+        then gotNewActiveItem usrCmp dqi >> pure True
+        else lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
 
   where
     errorDequeueing e = do
       CL.logError' logCmp "Exception dequeuing" e
 
-    gotNewActiveItem usrCmp qi =
+    gotNewActiveItem usrCmp dqi =
       catchUserErrorAsync "user handler" $
-        CUsr.usrProcessActiveItem usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName)
+        CUsr.usrProcessActiveItem usrCmp dqi
 
-    lastLockTimeoutExpiredForActiveItem usrCmp qi = do
+    lastLockTimeoutExpiredForActiveItem usrCmp dqi = do
       CL.logDebug logCmp "!!expire"
-      catchUserErrorAsync "Notify work item timeout" (CUsr.usrNotifyWorkItemTimeout usrCmp (qi ^. CR.dqaQueueId) (qi ^. CR.dqaWorkItemId) (qi ^. CR.dqaWorkTypeId) (qi ^. CR.dqaWorkItemName))
-      void $ CR.rpPauseWorkItem repoCmp (qi ^. CR.dqaWorkItemId) 5
-      CR.rpDeletePendingWorkItem repoCmp (qi ^. CR.dqaPendingItemId)
+      catchUserErrorAsync "Notify work item timeout" (CUsr.usrNotifyWorkItemTimeout usrCmp dqi)
+      void $ CR.rpPauseWorkItem repoCmp (dqi ^. C.dqaWorkItemId) 5
+      CR.rpDeletePendingWorkItem repoCmp (dqi ^. C.dqaPendingItemId)
       --TODO retryWorkItem repoCmp usrCmp logCmp sys (qi ^. CR.dqaWorkItemId)
 
     catchUserError n f =

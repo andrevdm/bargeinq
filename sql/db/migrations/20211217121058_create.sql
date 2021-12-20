@@ -41,6 +41,7 @@ CREATE TABLE if not exists bq_work_item
   depends_on_work_item uuid[] NULL,
   backoff_count int NOT NULL,
   attempts int NOT NULL,
+  work_data text NULL,
 
   CONSTRAINT bq_work_item_pkey PRIMARY KEY (wiId)
 );

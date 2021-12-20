@@ -8,6 +8,7 @@ module Lib
     ) where
 
 import           Verset
+import           Control.Lens ((^.))
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
 import qualified System.IO as IO
@@ -88,12 +89,12 @@ newUserCmpDemo bq =
   CUsr.UserCmp
     { CUsr.usrQueueStarting = putText "~~queue starting"
 
-    , CUsr.usrProcessActiveItem = \qid wid _wtid wtName -> do
-        putText $ "~~Processing item " <> show qid <> ", for " <> wtName
-        CBq.bqSetWorkItemDone bq wid
+    , CUsr.usrProcessActiveItem = \dqi -> do
+        putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
+        CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
         --CBq.bqExpreQueueItem bq qid
 
 
-    , CUsr.usrNotifyWorkItemTimeout = \qid _wid _wtid wtName -> do
-        putText $ "~~Work item timeout " <> show qid <> ", for " <> wtName
+    , CUsr.usrNotifyWorkItemTimeout = \dqi -> do
+        putText $ "~~Work item timeout " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName)
     }

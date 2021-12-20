@@ -34,6 +34,15 @@ module BargeInQueue.Core
     , wiBackoffCount
     , wiAttempts
 
+    , DequeuedActiveItem(..)
+    , dqaQueueId
+    , dqaPendingItemId
+    , dqaWorkItemId
+    , dqaWorkTypeId
+    , dqaWorkItemName
+    , dqaDequeuedAt
+    , dqaWorkData
+
     , QueueItemId(..)
     , WorkItemId(..)
     , PendingWorkItemId(..)
@@ -93,8 +102,18 @@ data WorkItem = WorkItem
   }
 
 
+data DequeuedActiveItem = DequeuedActiveItem
+  { _dqaQueueId :: !QueueItemId
+  , _dqaPendingItemId :: !PendingWorkItemId
+  , _dqaWorkItemId :: !WorkItemId
+  , _dqaWorkTypeId :: !WorkTypeId
+  , _dqaWorkItemName :: !Text
+  , _dqaDequeuedAt :: !(Maybe UTCTime)
+  , _dqaWorkData :: !(Maybe Text)
+  } deriving (Show)
 
 
+makeLenses ''DequeuedActiveItem
 makeLenses ''NewWorkItem
 makeLenses ''WorkItem
 makeLenses ''SystemConfig
