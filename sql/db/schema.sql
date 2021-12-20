@@ -365,7 +365,7 @@ CREATE TRIGGER tg_bq_queue_update_notify AFTER UPDATE ON public.bq_queue FOR EAC
 --
 
 ALTER TABLE ONLY public.bq_pending_work_item
-    ADD CONSTRAINT bq_pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.bq_pending_work_item(piid) ON DELETE CASCADE;
+    ADD CONSTRAINT bq_pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.bq_pending_work_item(piid);
 
 
 --
@@ -373,7 +373,7 @@ ALTER TABLE ONLY public.bq_pending_work_item
 --
 
 ALTER TABLE ONLY public.bq_pending_work_item
-    ADD CONSTRAINT bq_pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.bq_work_item(wiid);
+    ADD CONSTRAINT bq_pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.bq_work_item(wiid) ON DELETE CASCADE;
 
 
 --
