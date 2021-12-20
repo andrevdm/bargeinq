@@ -200,10 +200,20 @@ CREATE TABLE public.bq_work_item (
     retries_left integer NOT NULL,
     created_at timestamp with time zone NOT NULL,
     group_id uuid,
-    depends_on_work_item uuid[],
     backoff_count integer NOT NULL,
     attempts integer NOT NULL,
     work_data text
+);
+
+
+--
+-- Name: bq_work_item_blockers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bq_work_item_blockers (
+    wiid_blocked uuid NOT NULL,
+    wiid_blocker uuid NOT NULL,
+    CONSTRAINT chk_work_item_blockers_no_self_ref CHECK ((wiid_blocked <> wiid_blocker))
 );
 
 
@@ -254,6 +264,14 @@ ALTER TABLE ONLY public.bq_queue
 
 ALTER TABLE ONLY public.bq_system
     ADD CONSTRAINT bq_system_pkey PRIMARY KEY (system_id);
+
+
+--
+-- Name: bq_work_item_blockers bq_work_item_blockers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item_blockers
+    ADD CONSTRAINT bq_work_item_blockers_pkey PRIMARY KEY (wiid_blocked, wiid_blocker);
 
 
 --
@@ -313,6 +331,20 @@ CREATE UNIQUE INDEX ix_bq_queue_piid ON public.bq_queue USING btree (piid);
 --
 
 CREATE INDEX ix_bq_queue_qid ON public.bq_queue USING btree (qid);
+
+
+--
+-- Name: ix_bq_work_item_blockers_blocked; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_bq_work_item_blockers_blocked ON public.bq_work_item_blockers USING btree (wiid_blocked);
+
+
+--
+-- Name: ix_bq_work_item_blockers_blocker; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_bq_work_item_blockers_blocker ON public.bq_work_item_blockers USING btree (wiid_blocker);
 
 
 --
@@ -378,6 +410,22 @@ ALTER TABLE ONLY public.bq_pending_work_item
 
 ALTER TABLE ONLY public.bq_queue
     ADD CONSTRAINT bq_queue_piid_fkey FOREIGN KEY (piid) REFERENCES public.bq_pending_work_item(piid) ON DELETE CASCADE;
+
+
+--
+-- Name: bq_work_item_blockers bq_work_item_blockers_wiid_blocked_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item_blockers
+    ADD CONSTRAINT bq_work_item_blockers_wiid_blocked_fkey FOREIGN KEY (wiid_blocked) REFERENCES public.bq_work_item(wiid) ON DELETE CASCADE;
+
+
+--
+-- Name: bq_work_item_blockers bq_work_item_blockers_wiid_blocker_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bq_work_item_blockers
+    ADD CONSTRAINT bq_work_item_blockers_wiid_blocker_fkey FOREIGN KEY (wiid_blocker) REFERENCES public.bq_work_item(wiid) ON DELETE CASCADE;
 
 
 --

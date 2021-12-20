@@ -37,7 +37,6 @@ CREATE TABLE if not exists bq_work_item
   retries_left int NOT NULL,
   created_at timestamp with time zone not null,
   group_id uuid NULL,
-  depends_on_work_item uuid[] NULL,
   backoff_count int NOT NULL,
   attempts int NOT NULL,
   work_data text NULL,
@@ -48,6 +47,17 @@ CREATE INDEX if not exists ix_bq_work_item_wtId ON bq_work_item (wtId);
 CREATE INDEX if not exists ix_bq_work_item_system_id ON bq_work_item (system_id);
 CREATE INDEX if not exists ix_bq_work_item_ignore_until ON bq_work_item (ignore_until);
 CREATE INDEX if not exists ix_bq_work_item_group_id ON bq_work_item (group_id);
+
+CREATE TABLE if not exists bq_work_item_blockers
+(
+  wiid_blocked uuid NOT NULL references bq_work_item(wiId) ON DELETE CASCADE,
+  wiId_blocker uuid NOT NULL references bq_work_item(wiId) ON DELETE CASCADE,
+
+  CONSTRAINT bq_work_item_blockers_pkey PRIMARY KEY (wiid_blocked, wiId_blocker)
+);
+CREATE INDEX if not exists ix_bq_work_item_blockers_blocked ON bq_work_item_blockers (wiid_blocked);
+CREATE INDEX if not exists ix_bq_work_item_blockers_blocker ON bq_work_item_blockers (wiid_blocker);
+alter table bq_work_item_blockers ADD CONSTRAINT chk_work_item_blockers_no_self_ref CHECK (wiid_blocked <> wiid_blocker);
 
 
 CREATE SEQUENCE if not exists bq_pending_work_item_seq;

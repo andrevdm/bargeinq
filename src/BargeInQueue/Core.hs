@@ -8,7 +8,6 @@ module BargeInQueue.Core
     , nwiSystemId
     , nwiWorkerType
     , nwiGroupId
-    , nwiDependsOnWorkItem
     , nwiOverrideIgnoreUntil
     , nwiOverrideRetriesLeft
 
@@ -28,7 +27,6 @@ module BargeInQueue.Core
     , wiRetriesLeft
     , wiCreatedAt
     , wiGroupId
-    , wiDependsOnWorkItem
     , wiBackoffCount
     , wiAttempts
     , wiData
@@ -115,7 +113,6 @@ data WorkItem = WorkItem
   , _wiRetriesLeft :: !Int
   , _wiCreatedAt :: !UTCTime
   , _wiGroupId :: !(Maybe GroupId)
-  , _wiDependsOnWorkItem :: ![WorkItemId]
   , _wiBackoffCount :: !Int
   , _wiAttempts :: !Int
   , _wiData :: !(Maybe Text)

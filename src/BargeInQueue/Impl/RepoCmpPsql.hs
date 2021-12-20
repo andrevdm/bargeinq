@@ -172,7 +172,6 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
       , retries_left
       , created_at
       , group_id
-      , depends_on_work_item
       , backoff_count
       , attempts
       , work_data
@@ -184,7 +183,7 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
   CPg.pgQuery pgCmp sql (CPg.Only wiid) "workItem.fetch" >>= \case
     Left e -> pure . Left $ "Exception fetching work item:" <> show wiid <> "\n" <> show e
     Right [] -> pure . Left $ "Work item does not exist, fetching work item:" <> show wiid
-    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, dependsOnWorkItems, backoffCount, attempts, workData)] ->
+    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData)] ->
       pure . Right $ C.WorkItem
         { C._wiId = C.WorkItemId wiid
         , C._wiSystemId = C.SystemId sysId
@@ -194,7 +193,6 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
         , C._wiRetriesLeft = retriesLeft
         , C._wiCreatedAt = createdAt
         , C._wiGroupId = C.GroupId <$> groupId
-        , C._wiDependsOnWorkItem = C.WorkItemId <$> maybe [] (\(CPg.PGArray a) -> a) dependsOnWorkItems
         , C._wiBackoffCount = backoffCount
         , C._wiAttempts = attempts
         , C._wiData = workData
