@@ -67,7 +67,7 @@ CREATE SEQUENCE if not exists bq_queue_seq;
 CREATE TABLE if not exists bq_queue
 (
   qId bigint NOT NULL DEFAULT nextval('bq_queue_seq'::regclass),
-  piId bigint NOT NULL references bq_pending_work_item(piId),
+  piId bigint NOT NULL references bq_pending_work_item(piId) ON DELETE CASCADE,
   locked_until timestamp with time zone null,
   created_at timestamp with time zone not null,
   started_at timestamp with time zone null,
