@@ -138,8 +138,7 @@ SET default_tablespace = '';
 CREATE TABLE public.bq_pending_work_item (
     piid bigint DEFAULT nextval('public.bq_pending_work_item_seq'::regclass) NOT NULL,
     wiid uuid NOT NULL,
-    created_at timestamp with time zone NOT NULL,
-    parent_pending_worker_item bigint
+    created_at timestamp with time zone NOT NULL
 );
 
 
@@ -280,7 +279,7 @@ ALTER TABLE ONLY public.dbmate_migrations
 -- Name: ix_bq_pending_work_item_wi_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_bq_pending_work_item_wi_id ON public.bq_pending_work_item USING btree (wiid);
+CREATE UNIQUE INDEX ix_bq_pending_work_item_wi_id ON public.bq_pending_work_item USING btree (wiid);
 
 
 --
@@ -358,14 +357,6 @@ CREATE TRIGGER tg_bq_queue_insert_notify AFTER INSERT ON public.bq_queue FOR EAC
 --
 
 CREATE TRIGGER tg_bq_queue_update_notify AFTER UPDATE ON public.bq_queue FOR EACH ROW EXECUTE PROCEDURE public.fn_bq_queue_notify();
-
-
---
--- Name: bq_pending_work_item bq_pending_work_item_parent_pending_worker_item_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bq_pending_work_item
-    ADD CONSTRAINT bq_pending_work_item_parent_pending_worker_item_fkey FOREIGN KEY (parent_pending_worker_item) REFERENCES public.bq_pending_work_item(piid);
 
 
 --

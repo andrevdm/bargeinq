@@ -56,11 +56,10 @@ CREATE TABLE if not exists bq_pending_work_item
   piId bigint NOT NULL DEFAULT nextval('bq_pending_work_item_seq'::regclass),
   wiId uuid NOT NULL references bq_work_item(wiId) ON DELETE CASCADE,
   created_at timestamp with time zone not null,
-  parent_pending_worker_item bigint NULL references bq_pending_work_item(piId),
 
   CONSTRAINT bq_pending_work_item_pkey PRIMARY KEY (piId)
 );
-CREATE INDEX if not exists ix_bq_pending_work_item_wi_id ON bq_pending_work_item (wiId);
+CREATE UNIQUE INDEX if not exists ix_bq_pending_work_item_wi_id ON bq_pending_work_item (wiId);
 
 
 CREATE SEQUENCE if not exists bq_queue_seq;
