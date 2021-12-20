@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 
 module BargeInQueue.Impl.BargeInQueueCmpIO
     ( newBargeInQueueCmpIO
@@ -16,6 +17,7 @@ import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Components.UuidCmp as CUu
+import qualified BargeInQueue.Components.RepoCmp as CR
 
 newBargeInQueueCmpIO
   :: forall m.
@@ -26,8 +28,9 @@ newBargeInQueueCmpIO
   -> CL.LogCmp m
   -> CPg.PsqlCmp m
   -> CE.EnvCmp m
+  -> CR.RepoCmp m
   -> CBq.BargeInQueueCmp m
-newBargeInQueueCmpIO qCmp _dtCmp _uuCmp _lgCmp _pgCmp envCmp =
+newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
   CBq.BargeInQueueCmp
     { CBq.bqVersion = "TODO"
     , CBq.bqQueueWork = CQ.qQueueWork qCmp
@@ -40,5 +43,10 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp _lgCmp _pgCmp envCmp =
         -- Actually start
         _ <- CQ.qStartQueue qCmp
         pass
+
+    , CBq.bqSetWorkItemDone = \wi -> do
+      CR.rpDeleteWorkItem repoCmp wi >>= \case
+        Right _ -> pass
+        Left e -> CL.logError' logCmp ("Error deleting work item: " <> show wi) e
     }
 

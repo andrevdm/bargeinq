@@ -30,7 +30,29 @@ newRepoCmpPsql pgCmp =
     , CR.rpGetSystem = getSystem pgCmp
     , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
     , CR.rpDeletePendingWorkItem = deletePendingWorkItem pgCmp
+    , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
     }
+
+
+deleteWorkItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.WorkItemId
+  -> m (Either Text ())
+deleteWorkItem pgCmp (C.WorkItemId wiid) = do
+  let sql = [r|
+    delete
+    from
+      bq_work_item
+    where
+      wiid = ?
+  |]
+  CPg.pgExecute pgCmp sql (CPg.Only wiid) "work_item.delete" >>= \case
+    Left e -> pure . Left $ "Exception deleting work item:\n" <> show e
+    Right _ -> pure . Right $ ()
+
+
 
 deletePendingWorkItem
   :: forall m.
@@ -49,6 +71,7 @@ deletePendingWorkItem pgCmp (C.PendingWorkItemId piid) = do
   CPg.pgExecute pgCmp sql (CPg.Only piid) "pending_work_item.delete" >>= \case
     Left e -> pure . Left $ "Exception deleting pending item:\n" <> show e
     Right _ -> pure . Right $ ()
+
 
 fetchNextActiveItem
   :: forall m.
