@@ -308,10 +308,10 @@ fetchNextActiveItem pgCmp sys = do
       , r_dequeued_at
       , r_work_data
     from
-      bq_fetch_queue(?, ?)
+      bq_fetch_queue(?)
   |]
   let (C.SystemId sysId) = sys ^. C.sysId
-  CPg.pgQuery pgCmp sql (sysId, sys ^. C.sysPollPeriodSeconds) "queue.dequeue" >>= \case
+  CPg.pgQuery pgCmp sql (CPg.Only sysId) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
     Right [(qid, piid, wiid, wtid, wiName, dqa, dqw)] ->

@@ -93,14 +93,13 @@ tryProcessNextActiveItem
   -> C.SystemConfig
   -> m Bool
 tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
-  putText "tryGetActive"
   usrCmp <- CEnv.envDemandUser envCmp
 
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
     Right Nothing -> pure False -- Nothing was returned
     Left e -> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 
-    -- If the item already had dqaDequeuedAt set then it was previously dequeued
+    -- If the item already had dequeued_at set then it was previously dequeued
     -- The only way it could be returned here is if the lock period expired
     -- i.e. if it timed out
     Right (Just dqi) -> do
@@ -155,16 +154,7 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
 
   where
     addRetry wi = do
-      wt <- CEnv.envGetCachedWorkType envCmp (wi ^. C.wiWorkerTypeId) >>= \case
-        Just w -> pure w
-        Nothing -> do
-          CR.rpGetWorkType repoCmp (wi ^. C.wiWorkerTypeId) >>= \case
-            Right w -> do
-              CEnv.envCacheWorkType envCmp w
-              pure w
-            Left e ->
-              UE.throwString . Txt.unpack $ "Error fetching work type for retry\n" <> e
-
+      wt <- getWorkType envCmp repoCmp (wi ^. C.wiWorkerTypeId)
 
       now <- CDt.dtGetDate dtCmp
       let wi2 = wi & C.wiRetriesLeft %~ (`subtract` 1)
@@ -197,6 +187,25 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
         Left e -> UE.throwString . Txt.unpack $ "Error delete working item, no more retries: " <> show (wi ^. C.wiId) <> "\n" <> e
 
       CUsr.usrNotifyWorkItemFailedNoMoreRetries usrCmp wi
+
+
+
+getWorkType
+  :: (MonadIO m)
+  => CEnv.EnvCmp m
+  -> CR.RepoCmp m
+  -> C.WorkTypeId
+  -> m C.WorkType
+getWorkType envCmp repoCmp wtid =
+  CEnv.envGetCachedWorkType envCmp wtid >>= \case
+    Just w -> pure w
+    Nothing -> do
+      CR.rpGetWorkType repoCmp wtid >>= \case
+        Right w -> do
+          CEnv.envCacheWorkType envCmp w
+          pure w
+        Left e ->
+          UE.throwString . Txt.unpack $ "Error fetching work type for retry\n" <> e
 
 
 getBackoff :: [Int] -> Int -> Int -> NominalDiffTime

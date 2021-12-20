@@ -10,10 +10,10 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: bq_fetch_queue(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: bq_fetch_queue(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid, _lock_for_seconds integer) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text)
+CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -49,6 +49,7 @@ BEGIN
         , rwi.name as wi_name
         , rq.dequeued_at
         , rwi.work_data
+        , rwt.dequeue_lock_period_seconds
       from
         bq_queue rq
       inner join
@@ -63,13 +64,17 @@ BEGIN
         bq_work_item rwi
       on
         rwi.wiid = rpi.wiid
+      inner join
+        bq_work_type rwt
+      on
+        rwi.wtid = rwt.wtid
       where
         rq.qid = cte_lock.qid
     )
   update
     bq_queue q
   set
-      locked_until = now() + (interval '1 second' * _lock_for_seconds)
+      locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
     , dequeued_at = COALESCE(q.dequeued_at, now())
   from
     cte_lock

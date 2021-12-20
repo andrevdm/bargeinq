@@ -1,5 +1,5 @@
 -- migrate:up
-CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid, _lock_for_seconds int)
+CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid)
   RETURNS table ( r_qid bigint
                 , r_piid bigint
                 , r_wiid uuid
@@ -43,6 +43,7 @@ BEGIN
         , rwi.name as wi_name
         , rq.dequeued_at
         , rwi.work_data
+        , rwt.dequeue_lock_period_seconds
       from
         bq_queue rq
       inner join
@@ -57,13 +58,17 @@ BEGIN
         bq_work_item rwi
       on
         rwi.wiid = rpi.wiid
+      inner join
+        bq_work_type rwt
+      on
+        rwi.wtid = rwt.wtid
       where
         rq.qid = cte_lock.qid
     )
   update
     bq_queue q
   set
-      locked_until = now() + (interval '1 second' * _lock_for_seconds)
+      locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
     , dequeued_at = COALESCE(q.dequeued_at, now())
   from
     cte_lock
