@@ -164,7 +164,6 @@ CREATE TABLE public.bq_queue (
     piid bigint NOT NULL,
     locked_until timestamp with time zone,
     created_at timestamp with time zone NOT NULL,
-    started_at timestamp with time zone,
     heartbeat_at timestamp with time zone,
     dequeued_at timestamp with time zone
 );

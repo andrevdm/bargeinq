@@ -70,7 +70,6 @@ CREATE TABLE if not exists bq_queue
   piId bigint NOT NULL references bq_pending_work_item(piId) ON DELETE CASCADE,
   locked_until timestamp with time zone null,
   created_at timestamp with time zone not null,
-  started_at timestamp with time zone null,
   heartbeat_at timestamp with time zone null,
   dequeued_at timestamp with time zone null,
 
