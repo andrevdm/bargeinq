@@ -92,10 +92,10 @@ newUserCmpDemo bq =
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
         --CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
-        --CBq.bqFailQueueItem bq qid
-        now <- liftIO DT.getCurrentTime
-        let until = DT.addUTCTime (10 * 60) now
-        CBq.bqExtendTimeout bq (dqi ^. C.dqaQueueId) until
+        CBq.bqFailQueueItem bq (dqi ^. C.dqaQueueId)
+        --now <- liftIO DT.getCurrentTime
+        --let until = DT.addUTCTime (10 * 60) now
+        --CBq.bqExtendTimeout bq (dqi ^. C.dqaQueueId) until
 
     , CUsr.usrNotifyWorkItemSucceeded = \wi -> do
         putText $ "~~succeeded" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)
@@ -103,6 +103,9 @@ newUserCmpDemo bq =
 
     , CUsr.usrNotifyWorkItemTimeout = \dqi -> do
         putText $ "~~Work item timeout " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName)
+
+    , CUsr.usrNotifyWorkItemFailed = \dqi fr -> do
+        putText $ "~~Work item failed " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", with " <> show fr
 
     , CUsr.usrNotifyRetrypingWorkItem = \qid wi -> do
         putText $ "~~Retrying" <> show qid <> ", " <> fromMaybe "" (wi ^. C.wiData)

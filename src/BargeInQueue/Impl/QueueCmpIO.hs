@@ -25,8 +25,8 @@ import qualified BargeInQueue.Components.PsqlCmp as CPg
 import qualified BargeInQueue.Components.RepoCmp as CR
 import qualified BargeInQueue.Components.QueueCmp as CQ
 import qualified BargeInQueue.Components.UserCmp as CUsr
-import qualified BargeInQueue.Threading as Th
 import qualified BargeInQueue.Components.EnvCmp as CEnv
+import qualified BargeInQueue.Threading as Th
 
 
 newQueueCmpIO
@@ -108,9 +108,10 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
     -- The only way it could be returned here is if the lock period expired
     -- i.e. if it timed out
     Right (Just dqi) -> do
-      if isNothing (dqi ^. C.dqaDequeuedAt)
-        then gotNewActiveItem usrCmp dqi >> pure True
-        else lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
+      case (dqi ^. C.dqaFailReason, dqi ^. C.dqaDequeuedAt) of
+        (Nothing, Nothing) -> gotNewActiveItem usrCmp dqi >> pure True
+        (Just fr, _) -> queuedItemFailed usrCmp dqi fr >> pure True
+        (_, Just _) -> lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
 
   where
     errorDequeueing e = do
@@ -119,6 +120,15 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
     gotNewActiveItem usrCmp dqi =
       catchErrorAsync "user handler" $
         CUsr.usrProcessActiveItem usrCmp dqi
+
+    queuedItemFailed usrCmp dqi fr = do
+      catchErrorAsync "Notify work item failed" (CUsr.usrNotifyWorkItemFailed usrCmp dqi fr)
+      -- pause the work item so that no other thread/process fetches it while this code is running
+      void $ CR.rpPauseWorkItem repoCmp (dqi ^. C.dqaWorkItemId) 10
+      -- delete the pending work item, as the pending action is done (failed)
+      void $ CR.rpDeleteQueueItem repoCmp (dqi ^. C.dqaQueueId)
+      -- retry. Run async so that the queue can get the next item so long. The pause call above should prevent race conditions
+      catchErrorAsync "retry" $ retryWorkItem repoCmp usrCmp logCmp dtCmp envCmp sys dqi
 
     lastLockTimeoutExpiredForActiveItem usrCmp dqi = do
       catchErrorAsync "Notify work item timeout" (CUsr.usrNotifyWorkItemTimeout usrCmp dqi)

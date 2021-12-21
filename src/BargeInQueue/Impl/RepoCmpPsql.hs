@@ -35,8 +35,8 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
     , CR.rpDeleteQueueItem = deleteQueueItem pgCmp
-    , CR.rpExpireQueueItem = expireQueueItem pgCmp "expiring"
-    , CR.rpFailQueueItem = expireQueueItem pgCmp "failing"
+    , CR.rpExpireQueueItem = failQueueItem pgCmp "expiring" (Just C.FrManualExpire)
+    , CR.rpFailQueueItem = failQueueItem pgCmp "failing" (Just C.FrManualFail)
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
     , CR.rpGetWorkItem = getWorkItem pgCmp
     , CR.rpGetWorkType = getWorkType pgCmp
@@ -300,24 +300,25 @@ pauseWorkItem pgCmp dtCmp (C.WorkItemId wiid) seconds = do
     Right _ -> pure . Right $ ()
 
 
-expireQueueItem
+failQueueItem
   :: forall m.
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> Text
+  -> Maybe C.FailReason
   -> C.QueueItemId
   -> m (Either Text ())
-expireQueueItem pgCmp reason (C.QueueItemId qid) = do
+failQueueItem pgCmp reason frid (C.QueueItemId qid) = do
   let sql = [r|
     update
       bq_queue
     set
-      locked_until = null
+      frId = ?
     where
       qid = ?
   |]
-  CPg.pgExecute pgCmp sql (CPg.Only qid) ("queue_item." <> reason) >>= \case
-    Left e -> pure . Left $ "Exception " <> reason <> " queue item:\n" <> show e
+  CPg.pgExecute pgCmp sql (C.failReasonToId <$> frid, qid) ("queue_item." <> reason) >>= \case
+    Left e -> pure . Left $ "Exception " <> reason <> " failing item:\n" <> show e
     Right _ -> pure . Right $ ()
 
 

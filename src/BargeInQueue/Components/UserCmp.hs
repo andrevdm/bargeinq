@@ -20,6 +20,7 @@ data UserCmp m = UserCmp
   { usrQueueStarting :: m ()
   , usrProcessActiveItem :: !(C.DequeuedActiveItem -> m ())
   , usrNotifyWorkItemTimeout :: !(C.DequeuedActiveItem -> m ())
+  , usrNotifyWorkItemFailed :: !(C.DequeuedActiveItem -> C.FailReason -> m ())
   , usrNotifyRetrypingWorkItem :: !(C.QueueItemId -> C.WorkItem -> m ())
   , usrNotifyWorkItemFailedNoMoreRetries :: !(C.WorkItem -> m ())
   , usrNotifyWorkItemSucceeded :: !(C.WorkItem -> m ())
