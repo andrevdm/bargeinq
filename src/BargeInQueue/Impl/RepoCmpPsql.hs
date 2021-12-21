@@ -195,9 +195,10 @@ getWorkType pgCmp (C.WorkTypeId wtid) = do
       , name
       , default_retries
       , default_backoff_seconds
-      , default_heartbeat_check_period
       , default_exec_environment
       , dequeue_lock_period_seconds
+      , heartbeat_expected_every_seconds
+      , heartbeat_num_missed_for_error
     from
       bq_work_type
     where
@@ -206,16 +207,25 @@ getWorkType pgCmp (C.WorkTypeId wtid) = do
   CPg.pgQuery pgCmp sql (CPg.Only wtid) "workType.fetch" >>= \case
     Left e -> pure . Left $ "Exception fetching work type:" <> show wtid <> "\n" <> show e
     Right [] -> pure . Left $ "Work type does not exist, fetching work type:" <> show wtid
-    Right [(sysId, name, defRetries, CPg.PGArray defBackoff, defHeart, defEnv, defLock)] ->
+    Right [(sysId, name, defRetries, CPg.PGArray defBackoff, defEnv, defLock, hbExpected', hbNum')] -> do
+      let hb =
+           case (hbExpected', hbNum') of
+             (Just hbExpected, Just hbNum) ->
+               Just C.HeartbeatSettings
+                 { C._hbHeartbeatExpectedEverySeconds = hbExpected
+                 , C._hbHeartbeatNumMissedForError = hbNum
+                 }
+             _ -> Nothing
+
       pure . Right $ C.WorkType
         { C._wtId = C.WorkTypeId wtid
         , C._wtSystemId = C.SystemId sysId
         , C._wtName = name
         , C._wtDefaultRetries = defRetries
         , C._wtDefaultBackoffSeconds = defBackoff
-        , C._wtDefaultHeartbeatCheckPeriod = defHeart
         , C._wtDefaultExecEnvironment = defEnv
         , C._wtDequeueLockPeriodSeconds = defLock
+        , C._wtHeartbeatSettings = hb
         }
     Right _ -> pure . Left $ "Error fetching work type: Invalid data returned"
 
@@ -401,12 +411,13 @@ listSystems pgCmp = do
       , locked_by
       , max_active_items
       , auto_queue_unblocked
+      , heartbeat_check_period_seconds
     from
       bq_system
   |]
   CPg.pgQuery_ pgCmp sql "systems.list" >>= \case
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive, autoQueue) ->
+    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb) ->
       C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
@@ -414,6 +425,7 @@ listSystems pgCmp = do
         , C._sysLockedBy = lockedBy
         , C._sysMaxActiveItems = maxActive
         , C._sysAutoQueueUnblocked = autoQueue
+        , C._sysHeartbeatCheckPeriodSeconds = hb
         }
 
 
@@ -432,6 +444,7 @@ getSystem pgCmp (C.SystemId sysId) = do
       , locked_by
       , max_active_items
       , auto_queue_unblocked
+      , heartbeat_check_period_seconds
     from
       bq_system
     where
@@ -440,7 +453,7 @@ getSystem pgCmp (C.SystemId sysId) = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "systems.list" >>= \case
     Left e -> pure . Left $ "Exception getting system:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(sid, poll, lockUntil, lockedBy, maxActive, autoQueue)] ->
+    Right [(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb)] ->
       pure . Right . Just $ C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
@@ -448,6 +461,7 @@ getSystem pgCmp (C.SystemId sysId) = do
         , C._sysLockedBy = lockedBy
         , C._sysMaxActiveItems = maxActive
         , C._sysAutoQueueUnblocked = autoQueue
+        , C._sysHeartbeatCheckPeriodSeconds = hb
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
 

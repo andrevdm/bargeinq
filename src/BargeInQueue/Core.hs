@@ -17,6 +17,7 @@ module BargeInQueue.Core
     , sysLockedUntil
     , sysLockedBy
     , sysAutoQueueUnblocked
+    , sysHeartbeatCheckPeriodSeconds
 
     , WorkItem(..)
     , wiId
@@ -45,9 +46,13 @@ module BargeInQueue.Core
     , wtName
     , wtDefaultRetries
     , wtDefaultBackoffSeconds
-    , wtDefaultHeartbeatCheckPeriod
     , wtDefaultExecEnvironment
     , wtDequeueLockPeriodSeconds
+    , wtHeartbeatSettings
+
+    , HeartbeatSettings(..)
+    , hbHeartbeatExpectedEverySeconds
+    , hbHeartbeatNumMissedForError
 
     , QueueItemId(..)
     , WorkItemId(..)
@@ -75,9 +80,14 @@ data WorkType = WorkType
   , _wtName :: !Text
   , _wtDefaultRetries :: !Int
   , _wtDefaultBackoffSeconds :: ![Int]
-  , _wtDefaultHeartbeatCheckPeriod :: !(Maybe Int)
   , _wtDefaultExecEnvironment :: !Text
   , _wtDequeueLockPeriodSeconds :: !Int
+  , _wtHeartbeatSettings :: !(Maybe HeartbeatSettings)
+  } deriving (Show, Eq, Ord)
+
+data HeartbeatSettings = HeartbeatSettings
+  { _hbHeartbeatExpectedEverySeconds :: !Int
+  , _hbHeartbeatNumMissedForError :: !Int
   } deriving (Show, Eq, Ord)
 
 data NewWorkItem = NewWorkItem
@@ -99,6 +109,7 @@ data SystemConfig = SystemConfig
   , _sysLockedBy :: !(Maybe Text)
   , _sysMaxActiveItems :: !(Maybe Int)
   , _sysAutoQueueUnblocked :: !Bool
+  , _sysHeartbeatCheckPeriodSeconds :: !Int
   } deriving (Show)
 
 
@@ -132,3 +143,4 @@ makeLenses ''NewWorkItem
 makeLenses ''WorkItem
 makeLenses ''SystemConfig
 makeLenses ''WorkType
+makeLenses ''HeartbeatSettings

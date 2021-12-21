@@ -82,6 +82,8 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName = do
   CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
 
+  --case sys ^. C.sys
+
 
 -- | See if there is actually an item to work with
 tryProcessNextActiveItem

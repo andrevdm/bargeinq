@@ -179,7 +179,8 @@ CREATE TABLE public.bq_system (
     locked_until timestamp with time zone,
     locked_by text,
     max_active_items integer,
-    auto_queue_unblocked boolean NOT NULL
+    auto_queue_unblocked boolean NOT NULL,
+    heartbeat_check_period_seconds integer
 );
 
 
@@ -223,9 +224,11 @@ CREATE TABLE public.bq_work_type (
     name text NOT NULL,
     default_retries integer NOT NULL,
     default_backoff_seconds integer[] NOT NULL,
-    default_heartbeat_check_period integer,
     default_exec_environment text NOT NULL,
-    dequeue_lock_period_seconds integer NOT NULL
+    dequeue_lock_period_seconds integer NOT NULL,
+    heartbeat_expected_every_seconds integer,
+    heartbeat_num_missed_for_error integer,
+    CONSTRAINT chk_work_type_heartbeat_nulls CHECK ((((heartbeat_expected_every_seconds IS NULL) AND (heartbeat_num_missed_for_error IS NULL)) OR ((heartbeat_expected_every_seconds IS NOT NULL) AND (heartbeat_num_missed_for_error IS NOT NULL))))
 );
 
 

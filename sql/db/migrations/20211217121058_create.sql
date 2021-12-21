@@ -7,6 +7,7 @@ CREATE TABLE if not exists bq_system
   locked_by text COLLATE pg_catalog."default" null,
   max_active_items int null,
   auto_queue_unblocked bool not null,
+  heartbeat_check_period_seconds int NULL,
 
   CONSTRAINT bq_system_pkey PRIMARY KEY (system_id)
 );
@@ -19,13 +20,19 @@ CREATE TABLE if not exists bq_work_type
   name text COLLATE pg_catalog."default" NOT NULL,
   default_retries int NOT NULL,
   default_backoff_seconds int[] NOT NULL,
-  default_heartbeat_check_period int NULL,
   default_exec_environment text COLLATE pg_catalog."default" NOT NULL,
   dequeue_lock_period_seconds int NOT NULL,
+  heartbeat_expected_every_seconds int NULL,
+  heartbeat_num_missed_for_error int NULL,
 
   CONSTRAINT bq_work_type_pkey PRIMARY KEY (wtId)
 );
 CREATE INDEX if not exists ix_bq_work_type_system_id ON bq_work_type (system_id);
+alter table bq_work_type ADD CONSTRAINT chk_work_type_heartbeat_nulls CHECK
+               ( ((heartbeat_expected_every_seconds is null) and (heartbeat_num_missed_for_error is null))
+                or
+                 ((heartbeat_expected_every_seconds is not null) and (heartbeat_num_missed_for_error is not null))
+               );
 
 
 CREATE TABLE if not exists bq_work_item
