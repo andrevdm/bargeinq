@@ -41,8 +41,57 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpGetWorkType = getWorkType pgCmp
     , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
     , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
+    , CR.rpListUnqueuedUnblockedWorkItems = listUnqueuedUnblockedWorkItems pgCmp
     }
 
+
+listUnqueuedUnblockedWorkItems
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.SystemId
+  -> Int
+  -> m (Either Text [C.WorkItem])
+listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
+  let sql = [r|
+    select
+        wi.wiid
+      , wi.name
+      , wi.wtid
+      , wi.ignore_until
+      , wi.retries_left
+      , wi.created_at
+      , wi.group_id
+      , wi.backoff_count
+      , wi.attempts
+      , wi.work_data
+    from
+      bq_work_item wi
+    left outer join bq_queue q
+      on q.wiid = wi.wiid
+    where
+      q.qid is null
+      and not exists (select wiid_blocked from bq_work_item_blockers where wiid_blocked = wi.wiid)
+    order by
+      wi.created_at asc
+    limit (?)
+  |]
+  CPg.pgQuery pgCmp sql (CPg.Only maxItems) "work_items.list_unblocked" >>= \case
+    Left e -> pure . Left $ "Exception listing unblocked work items:\n" <> show e
+    Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData) ->
+      C.WorkItem
+        { C._wiId = C.WorkItemId wiid
+        , C._wiSystemId = C.SystemId sysId
+        , C._wiName = name
+        , C._wiWorkerTypeId = C.WorkTypeId wtid
+        , C._wiIgnoreUntil = ignoreUntil
+        , C._wiRetriesLeft = retriesLeft
+        , C._wiCreatedAt = createdAt
+        , C._wiGroupId = C.GroupId <$> groupId
+        , C._wiBackoffCount = backoffCount
+        , C._wiAttempts = attempts
+        , C._wiData = workData
+        }
 
 
 updateWorkItemForRetry

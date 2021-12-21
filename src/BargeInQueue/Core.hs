@@ -114,7 +114,7 @@ data WorkItem = WorkItem
   , _wiBackoffCount :: !Int
   , _wiAttempts :: !Int
   , _wiData :: !(Maybe Text)
-  }
+  } deriving (Show)
 
 
 data DequeuedActiveItem = DequeuedActiveItem
