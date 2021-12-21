@@ -375,18 +375,20 @@ listSystems pgCmp = do
       , locked_until
       , locked_by
       , max_active_items
+      , auto_queue_unblocked
     from
       bq_system
   |]
   CPg.pgQuery_ pgCmp sql "systems.list" >>= \case
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive) ->
+    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive, autoQueue) ->
       C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
         , C._sysMaxActiveItems = maxActive
+        , C._sysAutoQueueUnblocked = autoQueue
         }
 
 
@@ -404,6 +406,7 @@ getSystem pgCmp (C.SystemId sysId) = do
       , locked_until
       , locked_by
       , max_active_items
+      , auto_queue_unblocked
     from
       bq_system
     where
@@ -412,13 +415,14 @@ getSystem pgCmp (C.SystemId sysId) = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "systems.list" >>= \case
     Left e -> pure . Left $ "Exception getting system:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(sid, poll, lockUntil, lockedBy, maxActive)] ->
+    Right [(sid, poll, lockUntil, lockedBy, maxActive, autoQueue)] ->
       pure . Right . Just $ C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
         , C._sysMaxActiveItems = maxActive
+        , C._sysAutoQueueUnblocked = autoQueue
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
 

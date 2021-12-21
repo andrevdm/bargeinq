@@ -178,7 +178,8 @@ CREATE TABLE public.bq_system (
     poll_period_seconds integer NOT NULL,
     locked_until timestamp with time zone,
     locked_by text,
-    max_active_items integer
+    max_active_items integer,
+    auto_queue_unblocked boolean NOT NULL
 );
 
 

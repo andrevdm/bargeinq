@@ -6,6 +6,7 @@ CREATE TABLE if not exists bq_system
   locked_until timestamp with time zone null,
   locked_by text COLLATE pg_catalog."default" null,
   max_active_items int null,
+  auto_queue_unblocked bool not null,
 
   CONSTRAINT bq_system_pkey PRIMARY KEY (system_id)
 );

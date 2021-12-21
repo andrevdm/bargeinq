@@ -16,6 +16,7 @@ module BargeInQueue.Core
     , sysPollPeriodSeconds
     , sysLockedUntil
     , sysLockedBy
+    , sysAutoQueueUnblocked
 
     , WorkItem(..)
     , wiId
@@ -97,6 +98,7 @@ data SystemConfig = SystemConfig
   , _sysLockedUntil :: !(Maybe UTCTime)
   , _sysLockedBy :: !(Maybe Text)
   , _sysMaxActiveItems :: !(Maybe Int)
+  , _sysAutoQueueUnblocked :: !(Maybe Bool)
   } deriving (Show)
 
 
