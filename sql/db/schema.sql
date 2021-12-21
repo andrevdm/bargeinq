@@ -106,6 +106,21 @@ $$;
 
 
 --
+-- Name: fn_bq_queue_all_unblocked(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_bq_queue_all_unblocked(_sys_id uuid) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  insert into bq_queue
+    (wiid, created_at)
+    (select v.wiid, now() from vw_bq_unblocked_unqueued v where v.system_id = _sys_id and (v.ignore_until is null or v.ignore_until < now()));
+END
+$$;
+
+
+--
 -- Name: fn_bq_queue_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -448,4 +463,5 @@ INSERT INTO public.dbmate_migrations (version) VALUES
     ('20211218143535'),
     ('20211218155829'),
     ('20211219102340'),
-    ('20211221065337');
+    ('20211221065337'),
+    ('20211221072601');

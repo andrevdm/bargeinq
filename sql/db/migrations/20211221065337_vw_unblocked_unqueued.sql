@@ -18,7 +18,8 @@ create view vw_bq_unblocked_unqueued as
       on q.wiid = wi.wiid
     where
       q.qid is null
-      and not exists (select wiid_blocked from bq_work_item_blockers where wiid_blocked = wi.wiid)
+      and not exists (select wiid_blocked from bq_work_item_blockers where wiid_blocked = wi.wiid);
+
 
 -- migrate:down
-drop view vw_bq_unblocked_unqueued
+drop view vw_bq_unblocked_unqueued;
