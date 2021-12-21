@@ -2,7 +2,6 @@
 CREATE TABLE if not exists bq_system
 (
   system_id uuid NOT NULL,
-  requires_global_lock boolean not null,
   poll_period_seconds int NOT NULL,
   locked_until timestamp with time zone null,
   locked_by text COLLATE pg_catalog."default" null,

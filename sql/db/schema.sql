@@ -175,7 +175,6 @@ CREATE TABLE public.bq_queue (
 
 CREATE TABLE public.bq_system (
     system_id uuid NOT NULL,
-    requires_global_lock boolean NOT NULL,
     poll_period_seconds integer NOT NULL,
     locked_until timestamp with time zone,
     locked_by text,

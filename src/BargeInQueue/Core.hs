@@ -13,7 +13,6 @@ module BargeInQueue.Core
 
     , SystemConfig(..)
     , sysId
-    , sysRequiresGlobalLock
     , sysPollPeriodSeconds
     , sysLockedUntil
     , sysLockedBy
@@ -94,7 +93,6 @@ data NewWorkItem = NewWorkItem
 
 data SystemConfig = SystemConfig
   { _sysId :: !SystemId
-  , _sysRequiresGlobalLock :: !Bool
   , _sysPollPeriodSeconds :: !Int
   , _sysLockedUntil :: !(Maybe UTCTime)
   , _sysLockedBy :: !(Maybe Text)

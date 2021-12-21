@@ -371,7 +371,6 @@ listSystems pgCmp = do
   let sql = [r|
     select
         system_id
-      , requires_global_lock
       , poll_period_seconds
       , locked_until
       , locked_by
@@ -381,10 +380,9 @@ listSystems pgCmp = do
   |]
   CPg.pgQuery_ pgCmp sql "systems.list" >>= \case
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(sid, reqLock, poll, lockUntil, lockedBy, maxActive) ->
+    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive) ->
       C.SystemConfig
         { C._sysId = C.SystemId sid
-        , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
@@ -402,7 +400,6 @@ getSystem pgCmp (C.SystemId sysId) = do
   let sql = [r|
     select
         system_id
-      , requires_global_lock
       , poll_period_seconds
       , locked_until
       , locked_by
@@ -415,10 +412,9 @@ getSystem pgCmp (C.SystemId sysId) = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "systems.list" >>= \case
     Left e -> pure . Left $ "Exception getting system:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(sid, reqLock, poll, lockUntil, lockedBy, maxActive)] ->
+    Right [(sid, poll, lockUntil, lockedBy, maxActive)] ->
       pure . Right . Just $ C.SystemConfig
         { C._sysId = C.SystemId sid
-        , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
