@@ -40,6 +40,8 @@ BEGIN
         where
           lwi.system_id = _sys_id
           and (lq.locked_until is null or lq.locked_until < now())
+        order by
+          lwi.created_at asc
         limit 1
         for update skip locked
       ),
