@@ -39,6 +39,7 @@ module BargeInQueue.Core
     , dqaWorkItemName
     , dqaDequeuedAt
     , dqaWorkData
+    , dqaFailReason
 
     , WorkType(..)
     , wtId
@@ -61,6 +62,10 @@ module BargeInQueue.Core
     , GroupId(..)
     , PendingWorkItems(..)
     , QueueWorkItems(..)
+
+    , FailReason(..)
+    , failReasonToId
+    , failReasonFromId
     ) where
 
 import           Verset
@@ -135,7 +140,29 @@ data DequeuedActiveItem = DequeuedActiveItem
   , _dqaWorkItemName :: !Text
   , _dqaDequeuedAt :: !(Maybe UTCTime)
   , _dqaWorkData :: !(Maybe Text)
+  , _dqaFailReason :: !(Maybe FailReason)
   } deriving (Show)
+
+
+data FailReason
+  = FrError
+  | FrHeartbeatTimeout
+  | FrManualFail
+  | FrManualExpire
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+
+failReasonToId :: FailReason -> Int
+failReasonToId FrError = 543000
+failReasonToId FrHeartbeatTimeout = 543001
+failReasonToId FrManualFail = 543002
+failReasonToId FrManualExpire = 543003
+
+failReasonFromId :: Int -> FailReason
+failReasonFromId 543001 = FrHeartbeatTimeout
+failReasonFromId 543002 = FrManualFail
+failReasonFromId 543003 = FrManualExpire
+failReasonFromId _ = FrError
 
 
 makeLenses ''DequeuedActiveItem

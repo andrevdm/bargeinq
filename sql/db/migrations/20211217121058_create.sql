@@ -68,6 +68,20 @@ CREATE INDEX if not exists ix_bq_work_item_blockers_blocker ON bq_work_item_bloc
 alter table bq_work_item_blockers ADD CONSTRAINT chk_work_item_blockers_no_self_ref CHECK (wiid_blocked <> wiid_blocker);
 
 
+CREATE TABLE if not exists bq_fail_reason
+(
+  frId int NOT NULL,
+  frName text COLLATE pg_catalog."default" NOT NULL,
+
+  CONSTRAINT bq_pk_fail_reason PRIMARY KEY (frId)
+);
+
+insert into bq_fail_reason (frId, frName) values (543000, 'error');
+insert into bq_fail_reason (frId, frName) values (543001, 'heartbeat timeout');
+insert into bq_fail_reason (frId, frName) values (543002, 'manual fail');
+insert into bq_fail_reason (frId, frName) values (543003, 'manual expire');
+
+
 CREATE SEQUENCE if not exists bq_queue_seq;
 CREATE TABLE if not exists bq_queue
 (
@@ -77,6 +91,7 @@ CREATE TABLE if not exists bq_queue
   created_at timestamp with time zone not null,
   heartbeat_at timestamp with time zone null,
   dequeued_at timestamp with time zone null,
+  frId int null references bq_fail_reason (frId),
 
   CONSTRAINT bq_queue_pkey PRIMARY KEY (qId)
 );
@@ -84,6 +99,7 @@ CREATE INDEX if not exists ix_bq_queue_qid ON bq_queue (qid);
 CREATE unique INDEX if not exists ix_bq_queue_wiid ON bq_queue (wiid);
 CREATE INDEX if not exists ix_bq_queue_locked_until ON bq_queue (locked_until);
 CREATE INDEX if not exists ix_bq_queue_heartbeat_at ON bq_queue (heartbeat_at);
+CREATE INDEX if not exists ix_bq_queue_fail_readon ON bq_queue (frId);
 
 
 -- migrate:down
@@ -92,4 +108,4 @@ drop sequence bq_queue_seq;
 drop table bq_work_item;
 drop table bq_work_type;
 drop table bq_system;
-
+drop table bq_fail_reason;

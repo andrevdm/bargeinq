@@ -377,6 +377,7 @@ fetchNextActiveItem pgCmp sys = do
       , r_wi_name
       , r_dequeued_at
       , r_work_data
+      , r_frid
     from
       bq_fetch_queue(?)
   |]
@@ -384,7 +385,7 @@ fetchNextActiveItem pgCmp sys = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(qid, wiid, wtid, wiName, dqa, dqw)] ->
+    Right [(qid, wiid, wtid, wiName, dqa, dqw, frId)] ->
       pure . Right . Just $ C.DequeuedActiveItem
         { C._dqaQueueId = C.QueueItemId qid
         , C._dqaWorkItemId = C.WorkItemId wiid
@@ -392,6 +393,7 @@ fetchNextActiveItem pgCmp sys = do
         , C._dqaWorkItemName = wiName
         , C._dqaDequeuedAt = dqa
         , C._dqaWorkData = dqw
+        , C._dqaFailReason = C.failReasonFromId <$> frId
         }
     Right _ -> pure . Left $ "Error dequeuing: Invalid data returned"
 
