@@ -82,7 +82,9 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName = do
   CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
 
-  --case sys ^. C.sys
+  case sys ^. C.sysHeartbeatCheckPeriodSeconds of
+    Nothing -> pass
+    (Just hbSeconds) -> void . UA.async $ runHeartbeatChecks pgCmp logCmp repoCmp envCmp hbSeconds sys
 
 
 -- | See if there is actually an item to work with
@@ -258,3 +260,19 @@ checkUnblocked repoCmp sys = do
   when (sys ^. C.sysAutoQueueUnblocked) $ do
     _ <- CR.rpQueueAllUnblockedWorkItems repoCmp (sys ^. C.sysId)
     pass
+
+
+runHeartbeatChecks
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> CL.LogCmp m
+  -> CR.RepoCmp m
+  -> CEnv.EnvCmp m
+  -> Int
+  -> C.SystemConfig
+  -> m ()
+runHeartbeatChecks pgCmp logCmp repoCmp envCmp periodSeconds sys = forever $ do
+  UC.threadDelay $ 1000000 * periodSeconds
+  --missed <- CR.rpGetMissedHeartbeats repoCmp
+  pass

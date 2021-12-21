@@ -109,7 +109,7 @@ data SystemConfig = SystemConfig
   , _sysLockedBy :: !(Maybe Text)
   , _sysMaxActiveItems :: !(Maybe Int)
   , _sysAutoQueueUnblocked :: !Bool
-  , _sysHeartbeatCheckPeriodSeconds :: !Int
+  , _sysHeartbeatCheckPeriodSeconds :: !(Maybe Int)
   } deriving (Show)
 
 
