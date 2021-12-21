@@ -60,5 +60,8 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
         CR.rpExpireQueueItem repoCmp qi >>= \case
           Right _ -> pass
           Left e -> CL.logError' logCmp ("Error manually expiring queue item: " <> show qi) e
+
+    , CBq.bqListUnqueuedUnblockedWorkItems = CR.rpListUnqueuedUnblockedWorkItems repoCmp
+    , CBq.bqQueueAllUnblockedWorkItems = CR.rpQueueAllUnblockedWorkItems repoCmp
     }
 

@@ -42,7 +42,23 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
     , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
     , CR.rpListUnqueuedUnblockedWorkItems = listUnqueuedUnblockedWorkItems pgCmp
+    , CR.rpQueueAllUnblockedWorkItems = queueAllUnblockedWorkItems pgCmp
     }
+
+
+queueAllUnblockedWorkItems
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.SystemId
+  -> m (Either Text ())
+queueAllUnblockedWorkItems pgCmp (C.SystemId sysId) = do
+  let sql = [r|
+    select * from fn_bq_queue_all_unblocked(?)
+  |]
+  CPg.pgExecute pgCmp sql (CPg.Only sysId) "queue_all_unblocked" >>= \case
+    Left e -> pure . Left $ "Exception queuing all unblocked :\n" <> show e
+    Right _ -> pure . Right $ ()
 
 
 listUnqueuedUnblockedWorkItems

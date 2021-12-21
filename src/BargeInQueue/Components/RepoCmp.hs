@@ -23,5 +23,6 @@ data RepoCmp m = RepoCmp
   , rpUpdateWorkItemForRetry :: !(C.WorkItem -> m (Either Text ()))
   , rpCreateQueueItem :: !(C.WorkItemId -> UTCTime -> m (Either Text C.QueueItemId))
   , rpListUnqueuedUnblockedWorkItems :: !(C.SystemId -> Int -> m (Either Text [C.WorkItem]))
+  , rpQueueAllUnblockedWorkItems :: !(C.SystemId -> m (Either Text ()))
   }
 
