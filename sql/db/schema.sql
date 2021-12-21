@@ -224,6 +224,29 @@ CREATE TABLE public.dbmate_migrations (
 
 
 --
+-- Name: vw_bq_unblocked_unqueued; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.vw_bq_unblocked_unqueued AS
+ SELECT wi.wiid,
+    wi.name,
+    wi.wtid,
+    wi.system_id,
+    wi.ignore_until,
+    wi.retries_left,
+    wi.created_at,
+    wi.group_id,
+    wi.backoff_count,
+    wi.attempts,
+    wi.work_data
+   FROM (public.bq_work_item wi
+     LEFT JOIN public.bq_queue q ON ((q.wiid = wi.wiid)))
+  WHERE ((q.qid IS NULL) AND (NOT (EXISTS ( SELECT bq_work_item_blockers.wiid_blocked
+           FROM public.bq_work_item_blockers
+          WHERE (bq_work_item_blockers.wiid_blocked = wi.wiid)))));
+
+
+--
 -- Name: bq_queue bq_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -424,4 +447,5 @@ INSERT INTO public.dbmate_migrations (version) VALUES
     ('20211217140058'),
     ('20211218143535'),
     ('20211218155829'),
-    ('20211219102340');
+    ('20211219102340'),
+    ('20211221065337');

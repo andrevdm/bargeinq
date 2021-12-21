@@ -66,17 +66,14 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
       , wi.attempts
       , wi.work_data
     from
-      bq_work_item wi
-    left outer join bq_queue q
-      on q.wiid = wi.wiid
+      vw_bq_unblocked_unqueued wi
     where
-      q.qid is null
-      and not exists (select wiid_blocked from bq_work_item_blockers where wiid_blocked = wi.wiid)
+      wi.system_id = ?
     order by
       wi.created_at asc
     limit (?)
   |]
-  CPg.pgQuery pgCmp sql (CPg.Only maxItems) "work_items.list_unblocked" >>= \case
+  CPg.pgQuery pgCmp sql (sysId, maxItems) "work_items.list_unblocked" >>= \case
     Left e -> pure . Left $ "Exception listing unblocked work items:\n" <> show e
     Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData) ->
       C.WorkItem
