@@ -6,6 +6,7 @@ CREATE TABLE if not exists bq_system
   poll_period_seconds int NOT NULL,
   locked_until timestamp with time zone null,
   locked_by text COLLATE pg_catalog."default" null,
+  max_active_items int null,
 
   CONSTRAINT bq_system_pkey PRIMARY KEY (system_id)
 );
@@ -60,23 +61,11 @@ CREATE INDEX if not exists ix_bq_work_item_blockers_blocker ON bq_work_item_bloc
 alter table bq_work_item_blockers ADD CONSTRAINT chk_work_item_blockers_no_self_ref CHECK (wiid_blocked <> wiid_blocker);
 
 
-CREATE SEQUENCE if not exists bq_pending_work_item_seq;
-CREATE TABLE if not exists bq_pending_work_item
-(
-  piId bigint NOT NULL DEFAULT nextval('bq_pending_work_item_seq'::regclass),
-  wiId uuid NOT NULL references bq_work_item(wiId) ON DELETE CASCADE,
-  created_at timestamp with time zone not null,
-
-  CONSTRAINT bq_pending_work_item_pkey PRIMARY KEY (piId)
-);
-CREATE UNIQUE INDEX if not exists ix_bq_pending_work_item_wi_id ON bq_pending_work_item (wiId);
-
-
 CREATE SEQUENCE if not exists bq_queue_seq;
 CREATE TABLE if not exists bq_queue
 (
   qId bigint NOT NULL DEFAULT nextval('bq_queue_seq'::regclass),
-  piId bigint NOT NULL references bq_pending_work_item(piId) ON DELETE CASCADE,
+  wiId uuid NOT NULL references bq_work_item(wiid) ON DELETE CASCADE,
   locked_until timestamp with time zone null,
   created_at timestamp with time zone not null,
   heartbeat_at timestamp with time zone null,
@@ -85,7 +74,7 @@ CREATE TABLE if not exists bq_queue
   CONSTRAINT bq_queue_pkey PRIMARY KEY (qId)
 );
 CREATE INDEX if not exists ix_bq_queue_qid ON bq_queue (qid);
-CREATE unique INDEX if not exists ix_bq_queue_piid ON bq_queue (piid);
+CREATE unique INDEX if not exists ix_bq_queue_wiid ON bq_queue (wiid);
 CREATE INDEX if not exists ix_bq_queue_locked_until ON bq_queue (locked_until);
 CREATE INDEX if not exists ix_bq_queue_heartbeat_at ON bq_queue (heartbeat_at);
 
@@ -93,8 +82,6 @@ CREATE INDEX if not exists ix_bq_queue_heartbeat_at ON bq_queue (heartbeat_at);
 -- migrate:down
 drop table bq_queue;
 drop sequence bq_queue_seq;
-drop table bq_pending_work_item;
-drop sequence bq_pending_work_item_seq;
 drop table bq_work_item;
 drop table bq_work_type;
 drop table bq_system;

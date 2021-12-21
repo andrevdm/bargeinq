@@ -1,7 +1,6 @@
 -- migrate:up
 CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid)
   RETURNS table ( r_qid bigint
-                , r_piid bigint
                 , r_wiid uuid
                 , r_wtid uuid
                 , r_wi_name text
@@ -10,78 +9,79 @@ CREATE OR REPLACE FUNCTION bq_fetch_queue(_sys_id uuid)
                 )
   LANGUAGE 'plpgsql'
 AS $BODY$
+DECLARE
+  max_items integer := (select max_active_items from bq_system where system_id = _sys_id);
+  active_items integer := (
+    select
+      count(1)
+    from
+      bq_queue q
+    inner join bq_work_item wi
+      on q.wiid = q.wiid
+    where
+      wi.system_id = _sys_id
+      and (q.dequeued_at is not null and ( q.locked_until is not null
+                                           or q.locked_until >= now()
+                                         )
+          )
+  );
 BEGIN
-  return query
-
-  -- Fetch and lock a single item, if there are any available
-  with
-    cte_lock as (
-      select
+  if (max_items is null) or (active_items <= max_items) then
+    return query
+    -- Fetch and lock a single item, if there are any available
+    with
+      cte_lock as (
+        select
           lq.qid
-      from
-        bq_queue lq
-      inner join
-        bq_pending_work_item lpi
-      on
-        lpi.piid = lq.piid
-      inner join
-        bq_work_item lwi
-      on
-        lwi.system_id = _sys_id
-      where
-        (lq.locked_until is null or lq.locked_until < now())
-      limit 1
-      for update skip locked
-    ),
-    cte_data as (
-      select
-          rq.qid
-        , rq.locked_until
-        , rpi.piid
-        , rwi.wiid
-        , rwi.wtid
-        , rwi.name as wi_name
-        , rq.dequeued_at
-        , rwi.work_data
-        , rwt.dequeue_lock_period_seconds
-      from
-        bq_queue rq
-      inner join
-        cte_lock
-      on
-        cte_lock.qid = rq.qid
-      inner join
-        bq_pending_work_item rpi
-      on
-        rpi.piid = rq.piid
-      inner join
-        bq_work_item rwi
-      on
-        rwi.wiid = rpi.wiid
-      inner join
-        bq_work_type rwt
-      on
-        rwi.wtid = rwt.wtid
-      where
-        rq.qid = cte_lock.qid
-    )
-  update
-    bq_queue q
-  set
-      locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
-    , dequeued_at = COALESCE(q.dequeued_at, now())
-  from
-    cte_lock
-  inner join
-    cte_data
-  on
-    cte_data.qid = cte_lock.qid
-  returning
-    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at, cte_data.work_data;
+        from
+          bq_queue lq
+        inner join bq_work_item lwi
+          on lwi.wiid = lq.wiid
+        where
+          lwi.system_id = _sys_id
+          and (lq.locked_until is null or lq.locked_until < now())
+        limit 1
+        for update skip locked
+      ),
+      cte_data as (
+        select
+            rq.qid
+          , rq.locked_until
+          , rwi.wiid
+          , rwi.wtid
+          , rwi.name as wi_name
+          , rq.dequeued_at
+          , rwi.work_data
+          , rwt.dequeue_lock_period_seconds
+        from
+          cte_lock
+        inner join bq_queue rq
+          on cte_lock.qid = rq.qid
+        inner join bq_work_item rwi
+          on rwi.wiid = rq.wiid
+        inner join bq_work_type rwt
+          on rwi.wtid = rwt.wtid
+      )
+    update
+      bq_queue q
+    set
+        locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
+      , dequeued_at = COALESCE(q.dequeued_at, now())
+    from
+      cte_lock
+    inner join cte_data
+      on cte_data.qid = cte_lock.qid
+    where
+	    cte_lock.qid = q.qid
+    returning
+      q.qid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at, cte_data.work_data;
+  else
+    return;
+  end if;
 
 END
 $BODY$;
 
 
 -- migrate:down
-drop FUNCTION bq_fetch_queue(uuid, int);
+drop FUNCTION bq_fetch_queue(uuid);

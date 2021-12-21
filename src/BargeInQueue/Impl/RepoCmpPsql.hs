@@ -32,15 +32,14 @@ newRepoCmpPsql pgCmp dtCmp =
     { CR.rpListSystems = listSystems pgCmp
     , CR.rpGetSystem = getSystem pgCmp
     , CR.rpFetchNextActiveItem = fetchNextActiveItem pgCmp
-    , CR.rpDeletePendingWorkItem = deletePendingWorkItem pgCmp
     , CR.rpDeleteWorkItem = deleteWorkItem pgCmp
+    , CR.rpDeleteQueueItem = deleteQueueItem pgCmp
     , CR.rpExpireQueueItem = expireQueueItem pgCmp "expiring"
     , CR.rpFailQueueItem = expireQueueItem pgCmp "failing"
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
     , CR.rpGetWorkItem = getWorkItem pgCmp
     , CR.rpGetWorkType = getWorkType pgCmp
     , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
-    , CR.rpCreatePendingWorkItem = createPendingWorkItem pgCmp dtCmp
     , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
     }
 
@@ -70,49 +69,26 @@ updateWorkItemForRetry pgCmp wi = do
 
 
 
-createPendingWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> CDt.DateCmp m
-  -> C.WorkItemId
-  -> m (Either Text C.PendingWorkItemId)
-createPendingWorkItem pgCmp dtCmp (C.WorkItemId wiid) = do
-  let sql = [r|
-    insert into bq_pending_work_item
-      (wiid, created_at)
-    values
-      (?, ?)
-    returning
-      piid
-  |]
-  now <- CDt.dtGetDate dtCmp
-  CPg.pgQuery pgCmp sql (wiid, now) "pendingItem.create" >>= \case
-    Left e -> pure . Left $ "Exception creating pending work item:" <> show wiid <> "\n" <> show e
-    Right [CPg.Only piid] -> pure . Right . C.PendingWorkItemId $ piid
-    Right _ -> pure . Left $ "Error creating pending work item: Invalid data returned"
-
-
 createQueueItem
   :: forall m.
      (MonadUnliftIO m)
   => CPg.PsqlCmp m
   -> CDt.DateCmp m
-  -> C.PendingWorkItemId
+  -> C.WorkItemId
   -> UTCTime
   -> m (Either Text C.QueueItemId)
-createQueueItem pgCmp dtCmp (C.PendingWorkItemId piid) lockUntil = do
+createQueueItem pgCmp dtCmp (C.WorkItemId wiid) lockUntil = do
   let sql = [r|
     insert into bq_queue
-      (piid, created_at, locked_until)
+      (wiid, created_at, locked_until)
     values
       (?, ?, ?)
     returning
       qid
   |]
   now <- CDt.dtGetDate dtCmp
-  CPg.pgQuery pgCmp sql (piid, now, lockUntil) "queue.create" >>= \case
-    Left e -> pure . Left $ "Exception creating queue item:" <> show piid <> "\n" <> show e
+  CPg.pgQuery pgCmp sql (wiid, now, lockUntil) "queue.create" >>= \case
+    Left e -> pure . Left $ "Exception creating queue item for work item:" <> show wiid <> "\n" <> show e
     Right [CPg.Only qid] -> pure . Right . C.QueueItemId $ qid
     Right _ -> pure . Left $ "Error creating queue item: Invalid data returned"
 
@@ -248,6 +224,26 @@ expireQueueItem pgCmp reason (C.QueueItemId qid) = do
 
 
 
+deleteQueueItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.QueueItemId
+  -> m (Either Text ())
+deleteQueueItem pgCmp (C.QueueItemId qid) = do
+  let sql = [r|
+    delete
+    from
+      bq_queue
+    where
+      qid = ?
+  |]
+  CPg.pgExecute pgCmp sql (CPg.Only qid) "queue.delete" >>= \case
+    Left e -> pure . Left $ "Exception deleting queue item:\n" <> show e
+    Right _ -> pure . Right $ ()
+
+
+
 deleteWorkItem
   :: forall m.
      (MonadUnliftIO m)
@@ -268,25 +264,6 @@ deleteWorkItem pgCmp (C.WorkItemId wiid) = do
 
 
 
-deletePendingWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> C.PendingWorkItemId
-  -> m (Either Text ())
-deletePendingWorkItem pgCmp (C.PendingWorkItemId piid) = do
-  let sql = [r|
-    delete
-    from
-      bq_pending_work_item
-    where
-      piid = ?
-  |]
-  CPg.pgExecute pgCmp sql (CPg.Only piid) "pending_work_item.delete" >>= \case
-    Left e -> pure . Left $ "Exception deleting pending item:\n" <> show e
-    Right _ -> pure . Right $ ()
-
-
 fetchNextActiveItem
   :: forall m.
      (MonadUnliftIO m)
@@ -297,7 +274,6 @@ fetchNextActiveItem pgCmp sys = do
   let sql = [r|
     select
         r_qid
-      , r_piid
       , r_wiid
       , r_wtid
       , r_wi_name
@@ -310,10 +286,9 @@ fetchNextActiveItem pgCmp sys = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(qid, piid, wiid, wtid, wiName, dqa, dqw)] ->
+    Right [(qid, wiid, wtid, wiName, dqa, dqw)] ->
       pure . Right . Just $ C.DequeuedActiveItem
         { C._dqaQueueId = C.QueueItemId qid
-        , C._dqaPendingItemId = C.PendingWorkItemId piid
         , C._dqaWorkItemId = C.WorkItemId wiid
         , C._dqaWorkTypeId = C.WorkTypeId wtid
         , C._dqaWorkItemName = wiName
@@ -337,18 +312,20 @@ listSystems pgCmp = do
       , poll_period_seconds
       , locked_until
       , locked_by
+      , max_active_items
     from
       bq_system
   |]
   CPg.pgQuery_ pgCmp sql "systems.list" >>= \case
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(sid, reqLock, poll, lockUntil, lockedBy) ->
+    Right rs -> pure . Right $ rs <&> \(sid, reqLock, poll, lockUntil, lockedBy, maxActive) ->
       C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
+        , C._sysMaxActiveItems = maxActive
         }
 
 
@@ -366,6 +343,7 @@ getSystem pgCmp (C.SystemId sysId) = do
       , poll_period_seconds
       , locked_until
       , locked_by
+      , max_active_items
     from
       bq_system
     where
@@ -374,13 +352,14 @@ getSystem pgCmp (C.SystemId sysId) = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "systems.list" >>= \case
     Left e -> pure . Left $ "Exception getting system:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(sid, reqLock, poll, lockUntil, lockedBy)] ->
+    Right [(sid, reqLock, poll, lockUntil, lockedBy, maxActive)] ->
       pure . Right . Just $ C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysRequiresGlobalLock = reqLock
         , C._sysPollPeriodSeconds = poll
         , C._sysLockedUntil = lockUntil
         , C._sysLockedBy = lockedBy
+        , C._sysMaxActiveItems = maxActive
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
 

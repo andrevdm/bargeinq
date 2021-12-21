@@ -13,77 +13,78 @@ SET row_security = off;
 -- Name: bq_fetch_queue(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid) RETURNS TABLE(r_qid bigint, r_piid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text)
+CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid) RETURNS TABLE(r_qid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text)
     LANGUAGE plpgsql
     AS $$
+DECLARE
+  max_items integer := (select max_active_items from bq_system where system_id = _sys_id);
+  active_items integer := (
+    select
+      count(1)
+    from
+      bq_queue q
+    inner join bq_work_item wi
+      on q.wiid = q.wiid
+    where
+      wi.system_id = _sys_id
+      and (q.dequeued_at is not null and ( q.locked_until is not null
+                                           or q.locked_until >= now()
+                                         )
+          )
+  );
 BEGIN
-  return query
-
-  -- Fetch and lock a single item, if there are any available
-  with
-    cte_lock as (
-      select
+  if (max_items is null) or (active_items <= max_items) then
+    return query
+    -- Fetch and lock a single item, if there are any available
+    with
+      cte_lock as (
+        select
           lq.qid
-      from
-        bq_queue lq
-      inner join
-        bq_pending_work_item lpi
-      on
-        lpi.piid = lq.piid
-      inner join
-        bq_work_item lwi
-      on
-        lwi.system_id = _sys_id
-      where
-        (lq.locked_until is null or lq.locked_until < now())
-      limit 1
-      for update skip locked
-    ),
-    cte_data as (
-      select
-          rq.qid
-        , rq.locked_until
-        , rpi.piid
-        , rwi.wiid
-        , rwi.wtid
-        , rwi.name as wi_name
-        , rq.dequeued_at
-        , rwi.work_data
-        , rwt.dequeue_lock_period_seconds
-      from
-        bq_queue rq
-      inner join
-        cte_lock
-      on
-        cte_lock.qid = rq.qid
-      inner join
-        bq_pending_work_item rpi
-      on
-        rpi.piid = rq.piid
-      inner join
-        bq_work_item rwi
-      on
-        rwi.wiid = rpi.wiid
-      inner join
-        bq_work_type rwt
-      on
-        rwi.wtid = rwt.wtid
-      where
-        rq.qid = cte_lock.qid
-    )
-  update
-    bq_queue q
-  set
-      locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
-    , dequeued_at = COALESCE(q.dequeued_at, now())
-  from
-    cte_lock
-  inner join
-    cte_data
-  on
-    cte_data.qid = cte_lock.qid
-  returning
-    q.qid, cte_data.piid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at, cte_data.work_data;
+        from
+          bq_queue lq
+        inner join bq_work_item lwi
+          on lwi.wiid = lq.wiid
+        where
+          lwi.system_id = _sys_id
+          and (lq.locked_until is null or lq.locked_until < now())
+        limit 1
+        for update skip locked
+      ),
+      cte_data as (
+        select
+            rq.qid
+          , rq.locked_until
+          , rwi.wiid
+          , rwi.wtid
+          , rwi.name as wi_name
+          , rq.dequeued_at
+          , rwi.work_data
+          , rwt.dequeue_lock_period_seconds
+        from
+          cte_lock
+        inner join bq_queue rq
+          on cte_lock.qid = rq.qid
+        inner join bq_work_item rwi
+          on rwi.wiid = rq.wiid
+        inner join bq_work_type rwt
+          on rwi.wtid = rwt.wtid
+      )
+    update
+      bq_queue q
+    set
+        locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
+      , dequeued_at = COALESCE(q.dequeued_at, now())
+    from
+      cte_lock
+    inner join cte_data
+      on cte_data.qid = cte_lock.qid
+    where
+	    cte_lock.qid = q.qid
+    returning
+      q.qid, cte_data.wiid, cte_data.wtid, cte_data.wi_name, cte_data.dequeued_at, cte_data.work_data;
+  else
+    return;
+  end if;
 
 END
 $$;
@@ -112,7 +113,7 @@ CREATE FUNCTION public.fn_bq_queue_notify() RETURNS trigger
 DECLARE
   r1 text;
 BEGIN
-  FOR r1 IN select i.system_id::text as system_id from bq_pending_work_item p inner join bq_work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+  FOR r1 IN select i.system_id::text as system_id from bq_work_item i where i.wiid = NEW.wiid
     LOOP
       PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
     END loop;
@@ -121,31 +122,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
-
---
--- Name: bq_pending_work_item_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.bq_pending_work_item_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-SET default_tablespace = '';
-
---
--- Name: bq_pending_work_item; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.bq_pending_work_item (
-    piid bigint DEFAULT nextval('public.bq_pending_work_item_seq'::regclass) NOT NULL,
-    wiid uuid NOT NULL,
-    created_at timestamp with time zone NOT NULL
-);
 
 
 --
@@ -160,13 +136,15 @@ CREATE SEQUENCE public.bq_queue_seq
     CACHE 1;
 
 
+SET default_tablespace = '';
+
 --
 -- Name: bq_queue; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.bq_queue (
     qid bigint DEFAULT nextval('public.bq_queue_seq'::regclass) NOT NULL,
-    piid bigint NOT NULL,
+    wiid uuid NOT NULL,
     locked_until timestamp with time zone,
     created_at timestamp with time zone NOT NULL,
     heartbeat_at timestamp with time zone,
@@ -183,7 +161,8 @@ CREATE TABLE public.bq_system (
     requires_global_lock boolean NOT NULL,
     poll_period_seconds integer NOT NULL,
     locked_until timestamp with time zone,
-    locked_by text
+    locked_by text,
+    max_active_items integer
 );
 
 
@@ -243,14 +222,6 @@ CREATE TABLE public.dbmate_migrations (
 
 
 --
--- Name: bq_pending_work_item bq_pending_work_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bq_pending_work_item
-    ADD CONSTRAINT bq_pending_work_item_pkey PRIMARY KEY (piid);
-
-
---
 -- Name: bq_queue bq_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -299,13 +270,6 @@ ALTER TABLE ONLY public.dbmate_migrations
 
 
 --
--- Name: ix_bq_pending_work_item_wi_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ix_bq_pending_work_item_wi_id ON public.bq_pending_work_item USING btree (wiid);
-
-
---
 -- Name: ix_bq_queue_heartbeat_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -320,17 +284,17 @@ CREATE INDEX ix_bq_queue_locked_until ON public.bq_queue USING btree (locked_unt
 
 
 --
--- Name: ix_bq_queue_piid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ix_bq_queue_piid ON public.bq_queue USING btree (piid);
-
-
---
 -- Name: ix_bq_queue_qid; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_bq_queue_qid ON public.bq_queue USING btree (qid);
+
+
+--
+-- Name: ix_bq_queue_wiid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_bq_queue_wiid ON public.bq_queue USING btree (wiid);
 
 
 --
@@ -397,19 +361,11 @@ CREATE TRIGGER tg_bq_queue_update_notify AFTER UPDATE ON public.bq_queue FOR EAC
 
 
 --
--- Name: bq_pending_work_item bq_pending_work_item_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bq_pending_work_item
-    ADD CONSTRAINT bq_pending_work_item_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.bq_work_item(wiid) ON DELETE CASCADE;
-
-
---
--- Name: bq_queue bq_queue_piid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bq_queue bq_queue_wiid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bq_queue
-    ADD CONSTRAINT bq_queue_piid_fkey FOREIGN KEY (piid) REFERENCES public.bq_pending_work_item(piid) ON DELETE CASCADE;
+    ADD CONSTRAINT bq_queue_wiid_fkey FOREIGN KEY (wiid) REFERENCES public.bq_work_item(wiid) ON DELETE CASCADE;
 
 
 --

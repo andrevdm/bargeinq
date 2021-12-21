@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION fn_bq_queue_notify() RETURNS trigger AS $$
 DECLARE
   r1 text;
 BEGIN
-  FOR r1 IN select i.system_id::text as system_id from bq_pending_work_item p inner join bq_work_item i on p.wiid = i.wiid where p.piid = NEW.piid
+  FOR r1 IN select i.system_id::text as system_id from bq_work_item i where i.wiid = NEW.wiid
     LOOP
       PERFORM pg_notify('c' || REPLACE(r1, '-', ''), 'trigger');
     END loop;

@@ -33,7 +33,6 @@ module BargeInQueue.Core
 
     , DequeuedActiveItem(..)
     , dqaQueueId
-    , dqaPendingItemId
     , dqaWorkItemId
     , dqaWorkTypeId
     , dqaWorkItemName
@@ -52,7 +51,6 @@ module BargeInQueue.Core
 
     , QueueItemId(..)
     , WorkItemId(..)
-    , PendingWorkItemId(..)
     , SystemId(..)
     , WorkTypeId(..)
     , GroupId(..)
@@ -65,7 +63,6 @@ import           Control.Lens (makeLenses)
 
 newtype QueueItemId = QueueItemId Int deriving (Show, Eq)
 newtype WorkItemId = WorkItemId UUID deriving (Show, Eq)
-newtype PendingWorkItemId = PendingWorkItemId Int deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq, Ord)
 newtype WorkTypeId = WorkTypeId UUID deriving (Show, Eq, Ord)
 newtype PendingWorkItems = PendingWorkItems [NewWorkItem] deriving (Show, Eq)
@@ -101,6 +98,7 @@ data SystemConfig = SystemConfig
   , _sysPollPeriodSeconds :: !Int
   , _sysLockedUntil :: !(Maybe UTCTime)
   , _sysLockedBy :: !(Maybe Text)
+  , _sysMaxActiveItems :: !(Maybe Int)
   } deriving (Show)
 
 
@@ -121,7 +119,6 @@ data WorkItem = WorkItem
 
 data DequeuedActiveItem = DequeuedActiveItem
   { _dqaQueueId :: !QueueItemId
-  , _dqaPendingItemId :: !PendingWorkItemId
   , _dqaWorkItemId :: !WorkItemId
   , _dqaWorkTypeId :: !WorkTypeId
   , _dqaWorkItemName :: !Text

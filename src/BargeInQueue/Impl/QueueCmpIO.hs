@@ -120,7 +120,7 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
       -- pause the work item so that no other thread/process fetches it while this code is running
       void $ CR.rpPauseWorkItem repoCmp (dqi ^. C.dqaWorkItemId) 10
       -- delete the pending work item, as the pending action is done (failed)
-      void $ CR.rpDeletePendingWorkItem repoCmp (dqi ^. C.dqaPendingItemId)
+      void $ CR.rpDeleteQueueItem repoCmp (dqi ^. C.dqaQueueId)
       -- retry. Run async so that the queue can get the next item so long. The pause call above should prevent race conditions
       catchErrorAsync "retry" $ retryWorkItem repoCmp usrCmp logCmp dtCmp envCmp sys dqi
 
@@ -166,17 +166,12 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
         Right _ -> pass
         Left e -> UE.throwString . Txt.unpack $ "Error updating work item for retry" <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
 
-      -- Create a pending item for the work item
-      piid <- CR.rpCreatePendingWorkItem repoCmp (wi ^. C.wiId) >>= \case
-        Right p -> pure p
-        Left e -> UE.throwString . Txt.unpack $ "Error creating pending item for retry" <> show (wi ^. C.wiId) <> "\n" <> e
-
       -- Queue to make it active but locked for the backoff period
       let backoffUntil = DT.addUTCTime (getBackoff (wt ^. C.wtDefaultBackoffSeconds) (wi ^. C.wiAttempts) 120) now
 
-      qid <- CR.rpCreateQueueItem repoCmp piid backoffUntil >>= \case
+      qid <- CR.rpCreateQueueItem repoCmp (wi ^. C.wiId) backoffUntil >>= \case
         Right q -> pure q
-        Left e -> UE.throwString . Txt.unpack $ "Error creating queue item for retry" <> show piid <> "\n" <> e
+        Left e -> UE.throwString . Txt.unpack $ "Error creating queue item for retry" <> show (wi ^. C.wiId) <> "\n" <> e
 
       CUsr.usrNotifyRetrypingWorkItem usrCmp qid wi
 
