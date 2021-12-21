@@ -98,7 +98,7 @@ data SystemConfig = SystemConfig
   , _sysLockedUntil :: !(Maybe UTCTime)
   , _sysLockedBy :: !(Maybe Text)
   , _sysMaxActiveItems :: !(Maybe Int)
-  , _sysAutoQueueUnblocked :: !(Maybe Bool)
+  , _sysAutoQueueUnblocked :: !Bool
   } deriving (Show)
 
 

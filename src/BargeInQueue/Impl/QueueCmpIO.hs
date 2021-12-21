@@ -45,6 +45,7 @@ newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys = do
   CQ.QueueCmp
     { CQ.qQueueWork = queueWork
     , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan
+    , CQ.qCheckUnblocked = checkUnblocked repoCmp sys
     }
 
 
@@ -76,7 +77,7 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName = do
     CL.logTest' logCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys)
+  void . UA.async $ runPollLoop repoCmp sys pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys)
 
   CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
@@ -143,7 +144,7 @@ retryWorkItem
   -> C.SystemConfig
   -> C.DequeuedActiveItem
   -> m ()
-retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
+retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp sys dqi = do
   wi <- CR.rpGetWorkItem repoCmp (dqi ^. C.dqaWorkItemId) >>= \case
     Left e -> UE.throwString . Txt.unpack $ "Error running retry for " <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
     Right r -> pure r
@@ -181,6 +182,7 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp _sys dqi = do
         Right _ -> pass
         Left e -> UE.throwString . Txt.unpack $ "Error delete working item, no more retries: " <> show (wi ^. C.wiId) <> "\n" <> e
 
+      checkUnblocked repoCmp sys
       CUsr.usrNotifyWorkItemFailedNoMoreRetries usrCmp wi
 
 
@@ -214,17 +216,20 @@ getBackoff bs bAt bDefault' =
 runPollLoop
   :: forall m.
      (MonadUnliftIO m)
-  => Th.Gate
+  => CR.RepoCmp m
+  -> C.SystemConfig
+  -> Th.Gate
   -> m Bool
   -> m ()
-runPollLoop gate fn = forever $ do
+runPollLoop repoCmp sys gate fn = forever $ do
   Th.waitForOpenGateAndClose gate
   runFetch
 
   where
     runFetch = do
-      putText "polling"
+      --CL.logDebug logCmp "polling"
       gotItem <- fn
+      checkUnblocked repoCmp sys
       -- If there is an item then there is probably another, try again immediately
       when gotItem runFetch
 
@@ -239,3 +244,15 @@ runTriggerPoll
 runTriggerPoll seconds gate = forever $ do
   UC.threadDelay $ 1000000 * seconds
   Th.openGate gate
+
+
+checkUnblocked
+  :: forall m.
+     (MonadUnliftIO m)
+  => CR.RepoCmp m
+  -> C.SystemConfig
+  -> m ()
+checkUnblocked repoCmp sys = do
+  when (sys ^. C.sysAutoQueueUnblocked) $ do
+    _ <- CR.rpQueueAllUnblockedWorkItems repoCmp (sys ^. C.sysId)
+    pass

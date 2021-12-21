@@ -94,7 +94,7 @@ newUserCmpDemo bq =
 
     , CUsr.usrNotifyWorkItemSucceeded = \wi -> do
         putText $ "~~succeeded" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)
-        void $ CBq.bqQueueAllUnblockedWorkItems bq
+        --void $ CBq.bqQueueAllUnblockedWorkItems bq
 
     , CUsr.usrNotifyWorkItemTimeout = \dqi -> do
         putText $ "~~Work item timeout " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName)

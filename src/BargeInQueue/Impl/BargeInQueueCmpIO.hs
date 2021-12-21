@@ -53,23 +53,25 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
         usrCmp <- CEnv.envDemandUser envCmp
 
         wi <- CR.rpGetWorkItem repoCmp wiid >>= \case
-          Right r -> pure r
           Left e -> UE.throwString . Txt.unpack $ "Error getting work item: " <> show wiid <> "\n" <> e
+          Right r -> pure r
 
         CR.rpDeleteWorkItem repoCmp wiid >>= \case
-          Right _ -> CUsr.usrNotifyWorkItemSucceeded usrCmp wi
           Left e -> CL.logError' logCmp ("Error deleting work item: " <> show wi) e
+          Right _ -> do
+            CQ.qCheckUnblocked qCmp
+            CUsr.usrNotifyWorkItemSucceeded usrCmp wi
 
     , CBq.bqFailQueueItem = \qi -> do
         CL.logInfo' logCmp "User manually failed queue item" qi
         CR.rpFailQueueItem repoCmp qi >>= \case
-          Right _ -> pass
+          Right _ -> CQ.qCheckUnblocked qCmp
           Left e -> CL.logError' logCmp ("Error manually failing queue item: " <> show qi) e
 
     , CBq.bqExpireQueueItem = \qi -> do
         CL.logInfo' logCmp "User manually expired queue item" qi
         CR.rpExpireQueueItem repoCmp qi >>= \case
-          Right _ -> pass
+          Right _ -> CQ.qCheckUnblocked qCmp
           Left e -> CL.logError' logCmp ("Error manually expiring queue item: " <> show qi) e
 
     , CBq.bqListUnqueuedUnblockedWorkItems = do

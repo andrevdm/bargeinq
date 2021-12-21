@@ -10,5 +10,6 @@ import qualified BargeInQueue.Core as C
 data QueueCmp m = QueueCmp
   { qStartQueue :: !(m ())
   , qQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
+  , qCheckUnblocked :: !(m ())
   }
 
