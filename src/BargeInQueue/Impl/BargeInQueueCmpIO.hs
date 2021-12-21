@@ -81,5 +81,7 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
     , CBq.bqQueueAllUnblockedWorkItems = do
         let sysId = CEnv.envSystem envCmp ^. C.sysId
         CR.rpQueueAllUnblockedWorkItems repoCmp sysId
+
+    , CBq.bqExtendTimeout = \qid until -> void $ CR.rpExtendTimeout repoCmp qid until
     }
 

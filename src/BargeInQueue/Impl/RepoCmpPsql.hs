@@ -44,7 +44,32 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpCreateQueueItem = createQueueItem pgCmp dtCmp
     , CR.rpListUnqueuedUnblockedWorkItems = listUnqueuedUnblockedWorkItems pgCmp
     , CR.rpQueueAllUnblockedWorkItems = queueAllUnblockedWorkItems pgCmp
+    , CR.rpExtendTimeout = extendTimeout pgCmp
     }
+
+
+extendTimeout
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.QueueItemId
+  -> UTCTime
+  -> m (Either Text ())
+extendTimeout pgCmp (C.QueueItemId qid) until = do
+  let sql = [r|
+    update
+      bq_queue
+    set
+      locked_until = ?
+    where
+      qid = ?
+      and locked_until is not null
+      and locked_until < ?
+  |]
+  CPg.pgExecute pgCmp sql (until, qid, until) "queue.extendTimeout" >>= \case
+    Left e -> pure . Left $ "Exception extending timeout:\n" <> show e
+    Right _ -> pure . Right $ ()
+
 
 
 queueAllUnblockedWorkItems

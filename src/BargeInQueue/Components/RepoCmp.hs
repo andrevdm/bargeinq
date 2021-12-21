@@ -24,5 +24,6 @@ data RepoCmp m = RepoCmp
   , rpCreateQueueItem :: !(C.WorkItemId -> UTCTime -> m (Either Text C.QueueItemId))
   , rpListUnqueuedUnblockedWorkItems :: !(C.SystemId -> Int -> m (Either Text [C.WorkItem]))
   , rpQueueAllUnblockedWorkItems :: !(C.SystemId -> m (Either Text ()))
+  , rpExtendTimeout :: !(C.QueueItemId -> UTCTime -> m (Either Text ()))
   }
 

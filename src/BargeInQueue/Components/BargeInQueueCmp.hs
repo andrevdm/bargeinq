@@ -15,6 +15,7 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
   , bqSetWorkItemDone :: !(C.WorkItemId -> m ())
   , bqExpireQueueItem :: !(C.QueueItemId -> m ())
+  , bqExtendTimeout :: !(C.QueueItemId -> UTCTime -> m ())
   , bqFailQueueItem :: !(C.QueueItemId -> m ())
   , bqListUnqueuedUnblockedWorkItems :: !(Int -> m (Either Text [C.WorkItem]))
   , bqQueueAllUnblockedWorkItems :: !(m (Either Text ()))
