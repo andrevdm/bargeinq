@@ -83,15 +83,18 @@ run = do
 
 
 newUserCmpDemo :: (MonadUnliftIO m) => CBq.BargeInQueueCmp m -> CUsr.UserCmp m
-newUserCmpDemo _bq =
+newUserCmpDemo bq =
   CUsr.UserCmp
     { CUsr.usrQueueStarting = putText "~~queue starting"
 
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
-        --TODO CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
+        CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
         --CBq.bqFailQueueItem bq qid
 
+    , CUsr.usrNotifyWorkItemSucceeded = \wi -> do
+        putText $ "~~succeeded" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)
+        void $ CBq.bqQueueAllUnblockedWorkItems bq
 
     , CUsr.usrNotifyWorkItemTimeout = \dqi -> do
         putText $ "~~Work item timeout " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName)

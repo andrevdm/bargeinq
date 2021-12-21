@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module BargeInQueue.Impl.RepoCmpPsql
     ( newRepoCmpPsql
@@ -54,11 +55,11 @@ queueAllUnblockedWorkItems
   -> m (Either Text ())
 queueAllUnblockedWorkItems pgCmp (C.SystemId sysId) = do
   let sql = [r|
-    select * from fn_bq_queue_all_unblocked(?)
+    select null from fn_bq_queue_all_unblocked(?)
   |]
-  CPg.pgExecute pgCmp sql (CPg.Only sysId) "queue_all_unblocked" >>= \case
+  CPg.pgQuery pgCmp sql (CPg.Only sysId) "queue_all_unblocked" >>= \case
     Left e -> pure . Left $ "Exception queuing all unblocked :\n" <> show e
-    Right _ -> pure . Right $ ()
+    Right (_ :: [CPg.Only CPg.Null]) -> pure . Right $ ()
 
 
 listUnqueuedUnblockedWorkItems

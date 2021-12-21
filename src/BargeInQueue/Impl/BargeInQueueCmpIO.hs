@@ -8,9 +8,14 @@ module BargeInQueue.Impl.BargeInQueueCmpIO
     ) where
 
 import           Verset
+import           Control.Lens ((^.))
+import qualified Data.Text as Txt
+import           UnliftIO (MonadUnliftIO)
+import qualified UnliftIO.Exception as UE
 
+import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
-import qualified BargeInQueue.Components.EnvCmp as CE
+import qualified BargeInQueue.Components.EnvCmp as CEnv
 import qualified BargeInQueue.Components.QueueCmp as CQ
 import qualified BargeInQueue.Components.DateCmp as CDt
 import qualified BargeInQueue.Components.PsqlCmp as CPg
@@ -21,13 +26,13 @@ import qualified BargeInQueue.Components.RepoCmp as CR
 
 newBargeInQueueCmpIO
   :: forall m.
-     (Monad m)
+     (MonadUnliftIO m)
   => CQ.QueueCmp m
   -> CDt.DateCmp m
   -> CUu.UuidCmp m
   -> CL.LogCmp m
   -> CPg.PsqlCmp m
-  -> CE.EnvCmp m
+  -> CEnv.EnvCmp m
   -> CR.RepoCmp m
   -> CBq.BargeInQueueCmp m
 newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
@@ -37,16 +42,22 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
 
     , CBq.bqStartQueue = \usrCmp -> do
         -- Flag as started
-        CE.envSetStarted envCmp usrCmp
+        CEnv.envSetStarted envCmp usrCmp
         -- Tell the user we are about to start
         CUsr.usrQueueStarting usrCmp
         -- Actually start
         _ <- CQ.qStartQueue qCmp
         pass
 
-    , CBq.bqSetWorkItemDone = \wi -> do
-        CR.rpDeleteWorkItem repoCmp wi >>= \case
-          Right _ -> pass
+    , CBq.bqSetWorkItemDone = \wiid -> do
+        usrCmp <- CEnv.envDemandUser envCmp
+
+        wi <- CR.rpGetWorkItem repoCmp wiid >>= \case
+          Right r -> pure r
+          Left e -> UE.throwString . Txt.unpack $ "Error getting work item: " <> show wiid <> "\n" <> e
+
+        CR.rpDeleteWorkItem repoCmp wiid >>= \case
+          Right _ -> CUsr.usrNotifyWorkItemSucceeded usrCmp wi
           Left e -> CL.logError' logCmp ("Error deleting work item: " <> show wi) e
 
     , CBq.bqFailQueueItem = \qi -> do
@@ -61,7 +72,12 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
           Right _ -> pass
           Left e -> CL.logError' logCmp ("Error manually expiring queue item: " <> show qi) e
 
-    , CBq.bqListUnqueuedUnblockedWorkItems = CR.rpListUnqueuedUnblockedWorkItems repoCmp
-    , CBq.bqQueueAllUnblockedWorkItems = CR.rpQueueAllUnblockedWorkItems repoCmp
+    , CBq.bqListUnqueuedUnblockedWorkItems = do
+        let sysId = CEnv.envSystem envCmp ^. C.sysId
+        CR.rpListUnqueuedUnblockedWorkItems repoCmp sysId
+
+    , CBq.bqQueueAllUnblockedWorkItems = do
+        let sysId = CEnv.envSystem envCmp ^. C.sysId
+        CR.rpQueueAllUnblockedWorkItems repoCmp sysId
     }
 

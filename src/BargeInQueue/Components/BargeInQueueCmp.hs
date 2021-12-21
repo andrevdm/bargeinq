@@ -16,6 +16,6 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqSetWorkItemDone :: !(C.WorkItemId -> m ())
   , bqExpireQueueItem :: !(C.QueueItemId -> m ())
   , bqFailQueueItem :: !(C.QueueItemId -> m ())
-  , bqListUnqueuedUnblockedWorkItems :: !(C.SystemId -> Int -> m (Either Text [C.WorkItem]))
-  , bqQueueAllUnblockedWorkItems :: !(C.SystemId -> m (Either Text ()))
+  , bqListUnqueuedUnblockedWorkItems :: !(Int -> m (Either Text [C.WorkItem]))
+  , bqQueueAllUnblockedWorkItems :: !(m (Either Text ()))
   }

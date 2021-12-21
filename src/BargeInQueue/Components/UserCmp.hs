@@ -22,4 +22,5 @@ data UserCmp m = UserCmp
   , usrNotifyWorkItemTimeout :: !(C.DequeuedActiveItem -> m ())
   , usrNotifyRetrypingWorkItem :: !(C.QueueItemId -> C.WorkItem -> m ())
   , usrNotifyWorkItemFailedNoMoreRetries :: !(C.WorkItem -> m ())
+  , usrNotifyWorkItemSucceeded :: !(C.WorkItem -> m ())
   }
