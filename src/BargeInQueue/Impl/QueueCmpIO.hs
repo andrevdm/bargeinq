@@ -104,13 +104,15 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
     Right Nothing -> pure False -- Nothing was returned
     Left e -> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 
-    -- If the item already had dequeued_at set then it was previously dequeued
-    -- The only way it could be returned here is if the lock period expired
-    -- i.e. if it timed out
     Right (Just dqi) -> do
       case (dqi ^. C.dqaFailReason, dqi ^. C.dqaDequeuedAt) of
+          -- Process active item
         (Nothing, Nothing) -> gotNewActiveItem usrCmp dqi >> pure True
+          -- An explicit fail was set
         (Just fr, _) -> queuedItemFailed usrCmp dqi fr >> pure True
+          -- If the item already had dequeued_at set then it was previously dequeued
+          -- The only way it could be returned here is if the lock period expired
+          -- i.e. if it timed out
         (_, Just _) -> lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
 
   where
