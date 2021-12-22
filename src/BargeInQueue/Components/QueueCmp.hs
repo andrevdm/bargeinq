@@ -4,11 +4,9 @@ module BargeInQueue.Components.QueueCmp
     ( QueueCmp(..)
     ) where
 
-import qualified BargeInQueue.Core as C
-
-
 data QueueCmp m = QueueCmp
   { qStartQueue :: !(m ())
   , qCheckUnblocked :: !(m ())
+  , qTriggerPoll :: !(m ())
   }
 

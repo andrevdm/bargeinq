@@ -85,6 +85,9 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
         let sysId = CEnv.envSystem envCmp ^. C.sysId
         CR.rpListUnqueuedUnblockedWorkItems repoCmp sysId
 
+    , CBq.bqTriggerPoll =
+        CQ.qTriggerPoll qCmp
+
     , CBq.bqQueueAllUnblockedWorkItems = do
         let sysId = CEnv.envSystem envCmp ^. C.sysId
         CR.rpQueueAllUnblockedWorkItems repoCmp sysId

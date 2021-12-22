@@ -20,6 +20,7 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqExtendTimeout :: !(C.QueueItemId -> UTCTime -> m ())
   , bqFailQueueItem :: !(C.QueueItemId -> m ())
   , bqListUnqueuedUnblockedWorkItems :: !(Int -> m (Either Text [C.WorkItem]))
+  , bqTriggerPoll :: !(m ())
   , bqQueueAllUnblockedWorkItems :: !(m (Either Text ()))
   , bqGotHeartBeat :: !(C.QueueItemId -> m (Either Text ()))
 

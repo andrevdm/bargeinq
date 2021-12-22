@@ -39,13 +39,16 @@ newQueueCmpIO
   -> CEnv.EnvCmp m
   -> CDt.DateCmp m
   -> C.SystemConfig
-  -> CQ.QueueCmp m
+  -> m (CQ.QueueCmp m)
 newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys = do
+  pollGate <- Th.newOpenGate
+
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
-  CQ.QueueCmp
-    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan
+  pure CQ.QueueCmp
+    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan pollGate
     , CQ.qCheckUnblocked = checkUnblocked repoCmp sys
+    , CQ.qTriggerPoll = Th.openGate pollGate
     }
 
 
@@ -59,10 +62,9 @@ startQueue
   -> CEnv.EnvCmp m
   -> CDt.DateCmp m
   -> CPg.ChanName
+  -> Th.Gate
   -> m ()
-startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName = do
-  pollGate <- Th.newOpenGate
-
+startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate = do
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
     CL.logTest' logCmp "LISTEN> " n
     Th.openGate pollGate
