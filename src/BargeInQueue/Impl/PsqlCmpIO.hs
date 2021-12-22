@@ -20,7 +20,6 @@ import qualified Data.Text.Encoding as TxtE
 import qualified Data.Time as DT
 import qualified System.TimeIt as Tim
 import           Text.Printf (printf)
-import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
 import qualified UnliftIO.Exception as UE
@@ -36,11 +35,10 @@ data TracePg
 
 
 createPgConnPool
-  :: (MonadUnliftIO m)
-  => Int
+  :: Int
   -> DT.NominalDiffTime
   -> Text
-  -> m (Po.Pool Pg.Connection)
+  -> IO (Po.Pool Pg.Connection)
 createPgConnPool maxConns keepOpenSecs cstr =
   liftIO $ Po.createPool
     (Pg.connectPostgreSQL $ TxtE.encodeUtf8 cstr) -- how to create a new connection
@@ -51,12 +49,10 @@ createPgConnPool maxConns keepOpenSecs cstr =
 
 
 newPsqlCmpIO
-  :: forall m.
-     (MonadUnliftIO m)
-  => TracePg
+  :: TracePg
   -> Text
-  -> CL.LogCmp m
-  -> m (CPg.PsqlCmp m)
+  -> CL.LogCmp IO
+  -> IO (CPg.PsqlCmp IO)
 newPsqlCmpIO traceFlag connStr lg = do
   poolQuery <- createPgConnPool 4 60 connStr
 
@@ -88,6 +84,9 @@ newPsqlCmpIO traceFlag connStr lg = do
 
     , CPg.pgListenForNotifications = runListenForNotifications lg connStr traceFlag
     , CPg.pgNotify = runNotify lg poolQuery traceFlag
+
+    , CPg.pgWithTransaction = \name fn' ->
+        withTimedPool poolQuery name $ \conn -> Pg.withTransaction conn (fn' $ Pg.rollback conn)
     }
 
   where
@@ -95,14 +94,12 @@ newPsqlCmpIO traceFlag connStr lg = do
 
 
 runNotify
-  :: forall m.
-     (MonadUnliftIO m)
-  => CL.LogCmp m
+  :: CL.LogCmp IO
   -> Po.Pool Pg.Connection
   -> TracePg
   -> CPg.ChanName
   -> Text
-  -> m ()
+  -> IO ()
 runNotify lg pool traceFlag (CPg.ChanName chanName) s = do
   when (traceFlag == TraceAll) $ CL.logTest' lg "SQL:notify" (chanName <> ": " <> s)
   let name = "notify"
@@ -115,14 +112,12 @@ runNotify lg pool traceFlag (CPg.ChanName chanName) s = do
 
 
 runListenForNotifications
-  :: forall m.
-     (MonadUnliftIO m)
-  => CL.LogCmp m
+  :: CL.LogCmp IO
   -> Text
   -> TracePg
   -> CPg.ChanName
-  -> (Pg.Notification -> m ())
-  -> m ()
+  -> (Pg.Notification -> IO ())
+  -> IO ()
 runListenForNotifications lg connStr traceFlag (CPg.ChanName chanName) fn = do
   void . UA.async $ retry (0 :: Int)
 
@@ -161,12 +156,10 @@ runListenForNotifications lg connStr traceFlag (CPg.ChanName chanName) fn = do
 
 
 checkSlowQuery
-  :: forall a m.
-     (Monad m)
-  => CL.LogCmp m
+  :: CL.LogCmp IO
   -> Text
   -> Either SomeException (Double, a)
-  -> m (Either SomeException a)
+  -> IO (Either SomeException a)
 checkSlowQuery lg name res =
   case res of
     Left e ->
@@ -178,23 +171,20 @@ checkSlowQuery lg name res =
 
 
 withTimedPool
-  :: forall a m.
-     (MonadUnliftIO m)
-  => Po.Pool Pg.Connection
+  :: Po.Pool Pg.Connection
   -> Text
   -> (Pg.Connection -> IO a)
-  -> m (Double, a)
+  -> IO (Double, a)
 withTimedPool pool _name fn =
   liftIO $ Po.withResource pool (Tim.timeItT . fn)
 
 
 catchPsqlException
-  :: (MonadUnliftIO m)
-  => CL.LogCmp m
+  :: CL.LogCmp IO
   -> Text
   -> Pg.Query
-  -> m a
-  -> m (Either SomeException a)
+  -> IO a
+  -> IO (Either SomeException a)
 catchPsqlException lg name sql fn =
   UE.tryJust Just fn >>= \case
     Right r -> pure $ Right r

@@ -43,7 +43,7 @@ mkBargeInQueue sysId connStr tracePg minLogLevel = do
   -- Create enough components so we can query the repo
   let dt = CDt.newDateCmpIO @IO
   let lg = CL.newLogCmpIO @IO [termWriter] dt
-  pg <- CPg.newPsqlCmpIO @IO tracePg connStr lg
+  pg <- CPg.newPsqlCmpIO tracePg connStr lg
   let repo = CR.newRepoCmpPsql pg dt
 
   -- Fetch the system config

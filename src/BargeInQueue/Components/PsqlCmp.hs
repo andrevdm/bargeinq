@@ -27,4 +27,5 @@ data PsqlCmp m =
     , pgQuerySerializable :: forall q r. (Pg.ToRow q, Pg.FromRow r) => Pg.Query -> q -> Text -> m (Either SomeException [r])
     , pgListenForNotifications :: ChanName -> (Pg.Notification -> m ()) -> m ()
     , pgNotify :: ChanName -> Text -> m ()
+    , pgWithTransaction :: forall a. Text -> (m () -> m a) -> m (Double, a)
     }

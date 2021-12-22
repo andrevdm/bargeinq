@@ -14,7 +14,6 @@ import           Verset hiding (log)
 import           Control.Lens ((^.))
 import qualified Data.Time as DT
 import           Text.RawString.QQ (r)
-import           UnliftIO (MonadUnliftIO)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.DateCmp as CDt
@@ -23,11 +22,9 @@ import qualified BargeInQueue.Components.RepoCmp as CR
 
 
 newRepoCmpPsql
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> CDt.DateCmp m
-  -> CR.RepoCmp m
+  :: CPg.PsqlCmp IO
+  -> CDt.DateCmp IO
+  -> CR.RepoCmp IO
 newRepoCmpPsql pgCmp dtCmp =
   CR.RepoCmp
     { CR.rpListSystems = listSystems pgCmp
@@ -57,12 +54,10 @@ newRepoCmpPsql pgCmp dtCmp =
 
 
 extendTimeout
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.QueueItemId
   -> UTCTime
-  -> m (Either Text ())
+  -> IO (Either Text ())
 extendTimeout pgCmp (C.QueueItemId qid) until = do
   let sql = [r|
     update
@@ -81,11 +76,9 @@ extendTimeout pgCmp (C.QueueItemId qid) until = do
 
 
 queueAllUnblockedWorkItems
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.SystemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 queueAllUnblockedWorkItems pgCmp (C.SystemId sysId) = do
   let sql = [r|
     select null from fn_bq_queue_all_unblocked(?)
@@ -96,12 +89,10 @@ queueAllUnblockedWorkItems pgCmp (C.SystemId sysId) = do
 
 
 listUnqueuedUnblockedWorkItems
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.SystemId
   -> Int
-  -> m (Either Text [C.WorkItem])
+  -> IO (Either Text [C.WorkItem])
 listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
   let sql = [r|
     select
@@ -150,11 +141,9 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
 
 
 updateWorkItemForRetry
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.WorkItem
-  -> m (Either Text ())
+  -> IO (Either Text ())
 updateWorkItemForRetry pgCmp wi = do
   let sql = [r|
     update
@@ -174,13 +163,11 @@ updateWorkItemForRetry pgCmp wi = do
 
 
 createQueueItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> CDt.DateCmp m
+  :: CPg.PsqlCmp IO
+  -> CDt.DateCmp IO
   -> C.WorkItemId
   -> UTCTime
-  -> m (Either Text C.QueueItemId)
+  -> IO (Either Text C.QueueItemId)
 createQueueItem pgCmp dtCmp (C.WorkItemId wiid) lockUntil = do
   let sql = [r|
     insert into bq_queue
@@ -199,11 +186,9 @@ createQueueItem pgCmp dtCmp (C.WorkItemId wiid) lockUntil = do
 
 
 getWorkType
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.WorkTypeId
-  -> m (Either Text C.WorkType)
+  -> IO (Either Text C.WorkType)
 getWorkType pgCmp (C.WorkTypeId wtid) = do
   let sql = [r|
     select
@@ -247,11 +232,9 @@ getWorkType pgCmp (C.WorkTypeId wtid) = do
 
 
 getQueueItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.QueueItemId
-  -> m (Either Text C.QueueItem)
+  -> IO (Either Text C.QueueItem)
 getQueueItem pgCmp (C.QueueItemId qid) = do
   let sql = [r|
     select
@@ -284,11 +267,9 @@ getQueueItem pgCmp (C.QueueItemId qid) = do
 
 
 getWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.WorkItemId
-  -> m (Either Text C.WorkItem)
+  -> IO (Either Text C.WorkItem)
 getWorkItem pgCmp (C.WorkItemId wiid) = do
   let sql = [r|
     select
@@ -337,12 +318,10 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
 
 
 abortWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.WorkItemId
-  -> m (Either Text ())
-abortWorkItem pgCmp (C.WorkItemId wiid) = do
+  -> IO (Either Text ())
+abortWorkItem pgCmp (C.WorkItemId wiid) = snd <$> CPg.pgWithTransaction pgCmp "abortWorkItem" (\rollback -> do
   -- Give us some time to work, and stop retries
   let sql1 = [r|
     update
@@ -354,7 +333,10 @@ abortWorkItem pgCmp (C.WorkItemId wiid) = do
       wiid = ?
   |]
   CPg.pgExecute pgCmp sql1 (CPg.Only wiid) "work_item.abort.ignore" >>= \case
-    Left e -> pure . Left $ "Exception aborting work item (setting ignore):\n" <> show e
+    Left e -> do
+      rollback
+      pure . Left $ "Exception aborting work item (setting ignore):\n" <> show e
+
     Right _ -> do
       let sql = [r|
         update
@@ -365,19 +347,19 @@ abortWorkItem pgCmp (C.WorkItemId wiid) = do
           wiid = ?
       |]
       CPg.pgExecute pgCmp sql (C.failReasonToId C.FrUserAbort, wiid) "work_item.abort.queue" >>= \case
-        Left e -> pure . Left $ "Exception aborting work item (aborting queue item):\n" <> show e
         Right _ -> pure . Right $ ()
-
+        Left e -> do
+          rollback
+          pure . Left $ "Exception aborting work item (aborting queue item):\n" <> show e
+  )
 
 
 pauseWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> CDt.DateCmp m
+  :: CPg.PsqlCmp IO
+  -> CDt.DateCmp IO
   -> C.WorkItemId
   -> NominalDiffTime
-  -> m (Either Text ())
+  -> IO (Either Text ())
 pauseWorkItem pgCmp dtCmp (C.WorkItemId wiid) seconds = do
   let sql = [r|
     update
@@ -396,13 +378,11 @@ pauseWorkItem pgCmp dtCmp (C.WorkItemId wiid) seconds = do
 
 
 failQueueItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> Text
   -> Maybe C.FailReason
   -> C.QueueItemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 failQueueItem pgCmp reason frid (C.QueueItemId qid) = do
   let sql = [r|
     update
@@ -419,11 +399,9 @@ failQueueItem pgCmp reason frid (C.QueueItemId qid) = do
 
 
 deleteQueueItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.QueueItemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 deleteQueueItem pgCmp (C.QueueItemId qid) = do
   let sql = [r|
     delete
@@ -439,11 +417,9 @@ deleteQueueItem pgCmp (C.QueueItemId qid) = do
 
 
 deleteWorkItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.WorkItemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 deleteWorkItem pgCmp (C.WorkItemId wiid) = do
   let sql = [r|
     delete
@@ -459,11 +435,9 @@ deleteWorkItem pgCmp (C.WorkItemId wiid) = do
 
 
 fetchNextActiveItem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.SystemConfig
-  -> m (Either Text (Maybe C.DequeuedActiveItem))
+  -> IO (Either Text (Maybe C.DequeuedActiveItem))
 fetchNextActiveItem pgCmp sys = do
   let sql = [r|
     select
@@ -496,10 +470,8 @@ fetchNextActiveItem pgCmp sys = do
 
 
 listSystems
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
-  -> m (Either Text [C.SystemConfig])
+  :: CPg.PsqlCmp IO
+  -> IO (Either Text [C.SystemConfig])
 listSystems pgCmp = do
   let sql = [r|
     select
@@ -530,11 +502,9 @@ listSystems pgCmp = do
 
 
 getSystem
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.SystemId
-  -> m (Either Text (Maybe C.SystemConfig))
+  -> IO (Either Text (Maybe C.SystemConfig))
 getSystem pgCmp (C.SystemId sysId) = do
   let sql = [r|
     select
@@ -570,12 +540,10 @@ getSystem pgCmp (C.SystemId sysId) = do
 
 
 getMissedHeartbeats
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> Bool
   -> C.SystemId
-  -> m (Either Text [C.QueueItem])
+  -> IO (Either Text [C.QueueItem])
 getMissedHeartbeats pgCmp forFailed (C.SystemId sysId) = do
   let sql = [r|
     select
@@ -617,11 +585,9 @@ getMissedHeartbeats pgCmp forFailed (C.SystemId sysId) = do
 
 
 failAllHeartbeatExpired
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.SystemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 failAllHeartbeatExpired pgCmp (C.SystemId sysId) = do
   let sql = [r|
     update
@@ -654,11 +620,9 @@ failAllHeartbeatExpired pgCmp (C.SystemId sysId) = do
 
 
 gotHeartbeat
-  :: forall m.
-     (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.QueueItemId
-  -> m (Either Text ())
+  -> IO (Either Text ())
 gotHeartbeat pgCmp (C.QueueItemId qid) = do
   let sql = [r|
     update
@@ -675,11 +639,10 @@ gotHeartbeat pgCmp (C.QueueItemId qid) = do
 
 
 addPendingWorkItem
-  :: (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.NewWorkItem
-  -> m (Either Text C.WorkItemId)
-addPendingWorkItem pgCmp wi = do
+  -> IO (Either Text C.WorkItemId)
+addPendingWorkItem pgCmp wi = snd <$> CPg.pgWithTransaction pgCmp "addPendingWorkItem" (\rollback -> do
   let sql = [r|
     insert into bq_work_item
       ( wiid
@@ -730,7 +693,10 @@ addPendingWorkItem pgCmp wi = do
        , wi ^. C.nwiOverrideExecEnv
        )
   CPg.pgQuery pgCmp sql vals "work_item.create" >>= \case
-    Left e -> pure . Left $ "Exception creating work item:" <> show (wi ^. C.nwiId) <> "\n" <> show e
+    Left e ->do
+      rollback
+      pure . Left $ "Exception creating work item:" <> show (wi ^. C.nwiId) <> "\n" <> show e
+
     Right [CPg.Only wiid] -> do
       case wi ^. C.nwiDependsOnWorkItem of
         [] -> pure . Right . C.WorkItemId $ wiid
@@ -739,20 +705,23 @@ addPendingWorkItem pgCmp wi = do
           let vals2 = (wiid', CPg.PGArray $ depends <&> (\(C.WorkItemId i) -> i))
 
           CPg.pgExecute pgCmp sql2 vals2 "work_item.create.depends" >>= \case
-            Left e -> pure . Left $ "Exception creating work item depends on:" <> show (wi ^. C.nwiId) <> "\n" <> show e
             Right _ -> pure . Right . C.WorkItemId $ wiid
+            Left e -> do
+              rollback
+              pure . Left $ "Exception creating work item depends on:" <> show (wi ^. C.nwiId) <> "\n" <> show e
 
 
-    Right _ -> pure . Left $ "Error creating work item: Invalid data returned"
-
+    Right _ -> do
+      rollback
+      pure . Left $ "Error creating work item: Invalid data returned"
+  )
 
 
 addActiveQueueItem
-  :: (MonadUnliftIO m)
-  => CPg.PsqlCmp m
+  :: CPg.PsqlCmp IO
   -> C.NewWorkItem
-  -> m (Either Text C.QueueItemId)
-addActiveQueueItem pgCmp pwi = do
+  -> IO (Either Text C.QueueItemId)
+addActiveQueueItem pgCmp pwi = snd <$> CPg.pgWithTransaction pgCmp "addActiveQueueItem" (\rollback -> do
   addPendingWorkItem pgCmp pwi >>= \case
     Left e -> pure . Left $ e
     Right wiid -> do
@@ -765,6 +734,9 @@ addActiveQueueItem pgCmp pwi = do
           qid
       |]
       CPg.pgQuery pgCmp sql (CPg.Only $ pwi ^. C.nwiId & (\(C.WorkItemId i) -> i)) "queue.create" >>= \case
-        Left e -> pure . Left $ "Exception creating queue item for work item:" <> show wiid <> "\n" <> show e
         Right [CPg.Only qid'] -> pure . Right . C.QueueItemId $ qid'
         Right _ -> pure . Left $ "Error creating queue item: Invalid data returned"
+        Left e -> do
+          rollback
+          pure . Left $ "Exception creating queue item for work item:" <> show wiid <> "\n" <> show e
+  )
