@@ -6,8 +6,11 @@ module BargeInQueue.Core
     , nwiId
     , nwiName
     , nwiSystemId
-    , nwiWorkerType
+    , nwiWorkType
     , nwiGroupId
+    , nwiPriority
+    , nwiWorkData
+    , nwiDependsOnWorkItem
     , nwiOverrideIgnoreUntil
     , nwiOverrideRetriesLeft
     , nwiOverrideBackoffSeconds
@@ -75,8 +78,6 @@ module BargeInQueue.Core
     , SystemId(..)
     , WorkTypeId(..)
     , GroupId(..)
-    , PendingWorkItems(..)
-    , QueueWorkItems(..)
 
     , FailReason(..)
     , failReasonToId
@@ -90,8 +91,6 @@ newtype QueueItemId = QueueItemId Int deriving (Show, Eq)
 newtype WorkItemId = WorkItemId UUID deriving (Show, Eq)
 newtype SystemId = SystemId UUID deriving (Show, Eq, Ord)
 newtype WorkTypeId = WorkTypeId UUID deriving (Show, Eq, Ord)
-newtype PendingWorkItems = PendingWorkItems [NewWorkItem] deriving (Show, Eq)
-newtype QueueWorkItems = QueueWorkItems [NewWorkItem] deriving (Show, Eq)
 newtype GroupId = GroupId UUID deriving (Show, Eq)
 
 data WorkType = WorkType
@@ -114,8 +113,10 @@ data NewWorkItem = NewWorkItem
   { _nwiId :: !WorkItemId
   , _nwiName :: !Text
   , _nwiSystemId :: !SystemId
-  , _nwiWorkerType :: !WorkTypeId
+  , _nwiWorkType :: !WorkType
   , _nwiGroupId :: !(Maybe GroupId)
+  , _nwiPriority :: !Int
+  , _nwiWorkData :: !Text
   , _nwiDependsOnWorkItem :: ![WorkItemId]
   , _nwiOverrideIgnoreUntil :: !(Maybe UTCTime)
   , _nwiOverrideRetriesLeft :: !(Maybe Int)

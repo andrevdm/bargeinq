@@ -12,7 +12,8 @@ import qualified BargeInQueue.Components.UserCmp as CUsr
 data BargeInQueueCmp m = BargeInQueueCmp
   { bqVersion :: !Text
   , bqStartQueue :: !(CUsr.UserCmp m -> m ())
-  , bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
+  , bqAddPendingWorkItem :: !(C.NewWorkItem -> m (Either Text C.WorkItemId))
+  , bqAddActiveQueueItem :: !(C.NewWorkItem -> m (Either Text C.QueueItemId))
   , bqAbortWorkItem :: !(C.WorkItemId -> m ())
   , bqSetWorkItemDone :: !(C.WorkItemId -> m ())
   , bqExpireQueueItem :: !(C.QueueItemId -> m ())

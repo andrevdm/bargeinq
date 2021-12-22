@@ -31,5 +31,7 @@ data RepoCmp m = RepoCmp
   , rpGetFailHeartbeats :: !(C.SystemId -> m (Either Text [C.QueueItem]))
   , rpFailAllHeartbeatExpired :: !(C.SystemId -> m (Either Text ()))
   , rpGotHeartbeat :: !(C.QueueItemId -> m (Either Text ()))
+  , rpAddPendingWorkItem :: !(C.NewWorkItem -> m (Either Text C.WorkItemId))
+  , rpAddActiveQueueItem :: !(C.NewWorkItem -> m (Either Text C.QueueItemId))
   }
 

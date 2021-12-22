@@ -38,7 +38,8 @@ newBargeInQueueCmpIO
 newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
   CBq.BargeInQueueCmp
     { CBq.bqVersion = "TODO"
-    , CBq.bqQueueWork = CQ.qQueueWork qCmp
+    , CBq.bqAddPendingWorkItem = CR.rpAddPendingWorkItem repoCmp
+    , CBq.bqAddActiveQueueItem = CR.rpAddActiveQueueItem repoCmp
 
     , CBq.bqStartQueue = \usrCmp -> do
         -- Flag as started

@@ -10,10 +10,11 @@ module Lib
 import           Verset
 import           Control.Lens ((^.), (^..), traversed)
 --import qualified Data.Time as DT
+import qualified Data.Text as Txt
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
 import qualified System.IO as IO
-import           UnliftIO (MonadUnliftIO)
+import           UnliftIO (MonadUnliftIO, throwString)
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
@@ -44,38 +45,52 @@ run = do
 
   pend1Id <- C.WorkItemId <$> UU.nextRandom
   active1Id <- C.WorkItemId <$> UU.nextRandom
+  wt <- CBq.bqGetWorkType bq testWorkType >>= \case
+    Right r -> pure r
+    Left e -> throwString . Txt.unpack $ "Error getting work type:\n" <> e
 
-  let toPending = C.PendingWorkItems
-       [ C.NewWorkItem
+  let toPending = C.NewWorkItem
          { C._nwiId = pend1Id
          , C._nwiName = "pending1"
          , C._nwiSystemId = testSysId
-         , C._nwiWorkerType = testWorkType
+         , C._nwiWorkType = wt
          , C._nwiGroupId = Nothing
          , C._nwiDependsOnWorkItem = []
          , C._nwiOverrideIgnoreUntil = Nothing
          , C._nwiOverrideRetriesLeft = Nothing
          , C._nwiOverrideBackoffSeconds = Nothing
          , C._nwiOverrideExecEnv = Nothing
+         , C._nwiPriority = 1
+         , C._nwiWorkData = "toPend"
          }
-       ]
 
-  let toActive = C.QueueWorkItems
-       [ C.NewWorkItem
+  wiid1 <- CBq.bqAddPendingWorkItem bq toPending >>= \case
+    Right r -> pure r
+    Left e -> throwString . Txt.unpack $ "Error adding pending item:\n" <> e
+
+  print wiid1
+
+  let toActive = C.NewWorkItem
          { C._nwiId = active1Id
          , C._nwiName = "active1"
          , C._nwiSystemId = testSysId
-         , C._nwiWorkerType = testWorkType
+         , C._nwiWorkType = wt
          , C._nwiGroupId = Nothing
-         , C._nwiDependsOnWorkItem = []
+         , C._nwiDependsOnWorkItem = [wiid1]
          , C._nwiOverrideIgnoreUntil = Nothing
          , C._nwiOverrideRetriesLeft = Nothing
          , C._nwiOverrideBackoffSeconds = Nothing
          , C._nwiOverrideExecEnv = Nothing
+         , C._nwiPriority = 2
+         , C._nwiWorkData = "toActive"
          }
-       ]
 
-  CBq.bqQueueWork bq toPending toActive
+
+  qid2 <- CBq.bqAddActiveQueueItem bq toActive >>= \case
+    Right r -> pure r
+    Left e -> throwString . Txt.unpack $ "Error adding active item:\n" <> e
+
+  print qid2
 
   putText "\n\n----------------------"
   loop

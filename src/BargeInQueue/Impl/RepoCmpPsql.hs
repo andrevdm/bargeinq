@@ -51,6 +51,8 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpGetFailHeartbeats = getMissedHeartbeats pgCmp True
     , CR.rpFailAllHeartbeatExpired = failAllHeartbeatExpired pgCmp
     , CR.rpGotHeartbeat = gotHeartbeat pgCmp
+    , CR.rpAddPendingWorkItem = addPendingWorkItem pgCmp
+    , CR.rpAddActiveQueueItem = addActiveQueueItem pgCmp
     }
 
 
@@ -672,4 +674,97 @@ gotHeartbeat pgCmp (C.QueueItemId qid) = do
 
 
 
+addPendingWorkItem
+  :: (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.NewWorkItem
+  -> m (Either Text C.WorkItemId)
+addPendingWorkItem pgCmp wi = do
+  let sql = [r|
+    insert into bq_work_item
+      ( wiid
+      , system_id
+      , name
+      , wtid
+      , ignore_until
+      , retries_left
+      , created_at
+      , group_id
+      , backoff_count
+      , attempts
+      , work_data
+      , priority
+      , backoff_seconds_override
+      , exec_environment_override
+      )
+    values
+      ( ? -- wiid
+      , ? -- system_id
+      , ? -- name
+      , ? -- wiid
+      , now() + interval '1 second' -- ignore_until
+      , ? -- retries_left
+      , now() -- created_at
+      , ? -- group_id
+      , 0 -- backoff_count
+      , 0 -- attempts
+      , ? -- work_data
+      , ? -- priority
+      , ? -- backoff_seconds_override
+      , ? -- exec_environment_override
+      )
+    returning
+      wiid
+  |]
+  let (C.WorkItemId wiid') = wi ^. C.nwiId
+  let vals =
+       ( wiid'
+       , wi ^. C.nwiSystemId & (\(C.SystemId i) -> i)
+       , wi ^. C.nwiName
+       , wi ^. C.nwiWorkType . C.wtId & (\(C.WorkTypeId i) -> i)
+       , fromMaybe (wi ^. C.nwiWorkType . C.wtDefaultRetries) (wi ^. C.nwiOverrideRetriesLeft)
+       , wi ^. C.nwiGroupId <&> (\(C.GroupId i) -> i)
+       , wi ^. C.nwiWorkData
+       , wi ^. C.nwiPriority
+       , CPg.PGArray <$> wi ^. C.nwiOverrideBackoffSeconds
+       , wi ^. C.nwiOverrideExecEnv
+       )
+  CPg.pgQuery pgCmp sql vals "work_item.create" >>= \case
+    Left e -> pure . Left $ "Exception creating work item:" <> show (wi ^. C.nwiId) <> "\n" <> show e
+    Right [CPg.Only wiid] -> do
+      case wi ^. C.nwiDependsOnWorkItem of
+        [] -> pure . Right . C.WorkItemId $ wiid
+        depends -> do
+          let sql2 = "insert into bq_work_item_blockers (wiid_blocked, wiid_blocker) values (?, unnest(?::uuid[])) on conflict do nothing"
+          let vals2 = (wiid', CPg.PGArray $ depends <&> (\(C.WorkItemId i) -> i))
 
+          CPg.pgExecute pgCmp sql2 vals2 "work_item.create.depends" >>= \case
+            Left e -> pure . Left $ "Exception creating work item depends on:" <> show (wi ^. C.nwiId) <> "\n" <> show e
+            Right _ -> pure . Right . C.WorkItemId $ wiid
+
+
+    Right _ -> pure . Left $ "Error creating work item: Invalid data returned"
+
+
+
+addActiveQueueItem
+  :: (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.NewWorkItem
+  -> m (Either Text C.QueueItemId)
+addActiveQueueItem pgCmp pwi = do
+  addPendingWorkItem pgCmp pwi >>= \case
+    Left e -> pure . Left $ e
+    Right wiid -> do
+      let sql = [r|
+        insert into bq_queue
+          (wiid, created_at)
+        values
+          (?, now())
+        returning
+          qid
+      |]
+      CPg.pgQuery pgCmp sql (CPg.Only $ pwi ^. C.nwiId & (\(C.WorkItemId i) -> i)) "queue.create" >>= \case
+        Left e -> pure . Left $ "Exception creating queue item for work item:" <> show wiid <> "\n" <> show e
+        Right [CPg.Only qid'] -> pure . Right . C.QueueItemId $ qid'
+        Right _ -> pure . Left $ "Error creating queue item: Invalid data returned"

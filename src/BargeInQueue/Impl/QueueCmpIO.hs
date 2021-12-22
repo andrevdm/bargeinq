@@ -44,20 +44,9 @@ newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys = do
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   CQ.QueueCmp
-    { CQ.qQueueWork = queueWork
-    , CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan
+    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan
     , CQ.qCheckUnblocked = checkUnblocked repoCmp sys
     }
-
-
-queueWork
-  :: forall m.
-     (MonadIO m)
-  => C.PendingWorkItems
-  -> C.QueueWorkItems
-  -> m ()
-queueWork (C.PendingWorkItems _pws) (C.QueueWorkItems _qws) = do
-  pass
 
 
 startQueue
@@ -305,4 +294,5 @@ runHeartbeatChecks _pgCmp logCmp repoCmp envCmp periodSeconds sys = forever $ do
           CL.logError' logCmp "Error getting missed heartbeats" e
           pure []
       unless (null missed) $ notify missed
+
 
