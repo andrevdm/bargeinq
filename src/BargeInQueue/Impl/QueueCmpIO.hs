@@ -6,6 +6,7 @@
 
 module BargeInQueue.Impl.QueueCmpIO
     ( newQueueCmpIO
+    , getWorkType
     ) where
 
 import           Verset hiding (threadDelay)
@@ -160,7 +161,7 @@ retryWorkItem
   -> C.SystemConfig
   -> C.DequeuedActiveItem
   -> m ()
-retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp sys dqi = do
+retryWorkItem repoCmp usrCmp _logCmp dtCmp _envCmp sys dqi = do
   wi <- CR.rpGetWorkItem repoCmp (dqi ^. C.dqaWorkItemId) >>= \case
     Left e -> UE.throwString . Txt.unpack $ "Error running retry for " <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
     Right r -> pure r
@@ -171,8 +172,6 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp sys dqi = do
 
   where
     addRetry wi = do
-      wt <- getWorkType envCmp repoCmp (wi ^. C.wiWorkerTypeId)
-
       now <- CDt.dtGetDate dtCmp
       let wi2 = wi & C.wiRetriesLeft %~ (`subtract` 1)
                    & C.wiAttempts %~ (+ 1)
