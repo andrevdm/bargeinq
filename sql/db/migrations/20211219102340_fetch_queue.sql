@@ -21,6 +21,7 @@ DECLARE
       on q.wiid = q.wiid
     where
       wi.system_id = _sys_id
+      and q.frId is null
       and (q.dequeued_at is not null and ( q.locked_until is not null
                                            or q.locked_until >= now()
                                          )
