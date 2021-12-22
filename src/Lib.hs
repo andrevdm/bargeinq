@@ -9,10 +9,9 @@ module Lib
 
 import           Verset
 import           Control.Lens ((^.), (^..), traversed)
-import qualified Data.Time as DT
+--import qualified Data.Time as DT
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
-import           Text.Pretty.Simple (pPrint)
 import qualified System.IO as IO
 import           UnliftIO (MonadUnliftIO)
 
@@ -96,10 +95,11 @@ newUserCmpDemo bq =
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
         --CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
-        CBq.bqFailQueueItem bq (dqi ^. C.dqaQueueId)
+        --CBq.bqFailQueueItem bq (dqi ^. C.dqaQueueId)
         --now <- liftIO DT.getCurrentTime
         --let until = DT.addUTCTime (10 * 60) now
         --CBq.bqExtendTimeout bq (dqi ^. C.dqaQueueId) until
+        CBq.bqAbortWorkItem bq (dqi ^. C.dqaWorkItemId)
 
     , CUsr.usrNotifyWorkItemSucceeded = \wi -> do
         putText $ "~~succeeded" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)

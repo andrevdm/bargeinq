@@ -181,6 +181,7 @@ data FailReason
   | FrManualFail
   | FrManualExpire
   | FrTimeout
+  | FrUserAbort
   deriving (Show, Eq, Ord, Enum, Bounded)
 
 
@@ -190,12 +191,14 @@ failReasonToId FrHeartbeatTimeout = 543001
 failReasonToId FrManualFail = 543002
 failReasonToId FrManualExpire = 543003
 failReasonToId FrTimeout = 543004
+failReasonToId FrUserAbort = 543005
 
 failReasonFromId :: Int -> FailReason
 failReasonFromId 543001 = FrHeartbeatTimeout
 failReasonFromId 543002 = FrManualFail
 failReasonFromId 543003 = FrManualExpire
 failReasonFromId 543004 = FrTimeout
+failReasonFromId 543005 = FrUserAbort
 failReasonFromId _ = FrError
 
 

@@ -38,6 +38,7 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpExpireQueueItem = failQueueItem pgCmp "expiring" (Just C.FrManualExpire)
     , CR.rpFailQueueItem = failQueueItem pgCmp "failing" (Just C.FrManualFail)
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
+    , CR.rpAbortWorkItem = abortWorkItem pgCmp
     , CR.rpGetQueueItem = getQueueItem pgCmp
     , CR.rpGetWorkItem = getWorkItem pgCmp
     , CR.rpGetWorkType = getWorkType pgCmp
@@ -330,6 +331,40 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
         , C._wiExecEnv = env
         }
     Right _ -> pure . Left $ "Error fetching work item: Invalid data returned"
+
+
+
+abortWorkItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.WorkItemId
+  -> m (Either Text ())
+abortWorkItem pgCmp (C.WorkItemId wiid) = do
+  -- Give us some time to work, and stop retries
+  let sql1 = [r|
+    update
+      bq_work_item
+    set
+        ignore_until = now() + interval '20 seconds'
+      , retries_left = 0
+    where
+      wiid = ?
+  |]
+  CPg.pgExecute pgCmp sql1 (CPg.Only wiid) "work_item.abort.ignore" >>= \case
+    Left e -> pure . Left $ "Exception aborting work item (setting ignore):\n" <> show e
+    Right _ -> do
+      let sql = [r|
+        update
+          bq_queue
+        set
+          frid = ?
+        where
+          wiid = ?
+      |]
+      CPg.pgExecute pgCmp sql (C.failReasonToId C.FrUserAbort, wiid) "work_item.abort.queue" >>= \case
+        Left e -> pure . Left $ "Exception aborting work item (aborting queue item):\n" <> show e
+        Right _ -> pure . Right $ ()
 
 
 

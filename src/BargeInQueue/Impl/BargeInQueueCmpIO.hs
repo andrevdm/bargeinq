@@ -49,6 +49,12 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
         _ <- CQ.qStartQueue qCmp
         pass
 
+    , CBq.bqAbortWorkItem = \wiid -> do
+        CL.logInfo' logCmp "User manually aborted work item" wiid
+        CR.rpAbortWorkItem repoCmp wiid >>= \case
+          Right _ -> CQ.qCheckUnblocked qCmp
+          Left e -> CL.logError' logCmp ("Error aborting workitem item: " <> show wiid) e
+
     , CBq.bqSetWorkItemDone = \wiid -> do
         usrCmp <- CEnv.envDemandUser envCmp
 

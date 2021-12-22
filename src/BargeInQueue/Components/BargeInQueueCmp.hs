@@ -13,6 +13,7 @@ data BargeInQueueCmp m = BargeInQueueCmp
   { bqVersion :: !Text
   , bqStartQueue :: !(CUsr.UserCmp m -> m ())
   , bqQueueWork :: !(C.PendingWorkItems -> C.QueueWorkItems -> m ())
+  , bqAbortWorkItem :: !(C.WorkItemId -> m ())
   , bqSetWorkItemDone :: !(C.WorkItemId -> m ())
   , bqExpireQueueItem :: !(C.QueueItemId -> m ())
   , bqExtendTimeout :: !(C.QueueItemId -> UTCTime -> m ())
