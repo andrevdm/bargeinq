@@ -80,6 +80,7 @@ insert into bq_fail_reason (frId, frName) values (543000, 'error');
 insert into bq_fail_reason (frId, frName) values (543001, 'heartbeat timeout');
 insert into bq_fail_reason (frId, frName) values (543002, 'manual fail');
 insert into bq_fail_reason (frId, frName) values (543003, 'manual expire');
+insert into bq_fail_reason (frId, frName) values (543004, 'timeout');
 
 
 CREATE SEQUENCE if not exists bq_queue_seq;

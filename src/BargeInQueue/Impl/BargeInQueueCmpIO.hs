@@ -83,5 +83,12 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
         CR.rpQueueAllUnblockedWorkItems repoCmp sysId
 
     , CBq.bqExtendTimeout = \qid until -> void $ CR.rpExtendTimeout repoCmp qid until
+    , CBq.bqGotHeartBeat = CR.rpGotHeartbeat repoCmp
+
+    , CBq.bqListSystems = CR.rpListSystems repoCmp
+    , CBq.bqGetSystem = CR.rpGetSystem repoCmp
+    , CBq.bqGetQueueItem = CR.rpGetQueueItem repoCmp
+    , CBq.bqGetWorkItem = CR.rpGetWorkItem repoCmp
+    , CBq.bqGetWorkType = CR.rpGetWorkType repoCmp
     }
 

@@ -18,6 +18,7 @@ data RepoCmp m = RepoCmp
   , rpExpireQueueItem :: !(C.QueueItemId -> m (Either Text ()))
   , rpFailQueueItem :: !(C.QueueItemId -> m (Either Text ()))
   , rpPauseWorkItem :: !(C.WorkItemId -> NominalDiffTime -> m (Either Text ()))
+  , rpGetQueueItem :: !(C.QueueItemId -> m (Either Text C.QueueItem))
   , rpGetWorkItem :: !(C.WorkItemId -> m (Either Text C.WorkItem))
   , rpGetWorkType :: !(C.WorkTypeId -> m (Either Text C.WorkType))
   , rpUpdateWorkItemForRetry :: !(C.WorkItem -> m (Either Text ()))
@@ -25,5 +26,9 @@ data RepoCmp m = RepoCmp
   , rpListUnqueuedUnblockedWorkItems :: !(C.SystemId -> Int -> m (Either Text [C.WorkItem]))
   , rpQueueAllUnblockedWorkItems :: !(C.SystemId -> m (Either Text ()))
   , rpExtendTimeout :: !(C.QueueItemId -> UTCTime -> m (Either Text ()))
+  , rpGetMissedHeartbeats :: !(C.SystemId -> m (Either Text [C.QueueItem]))
+  , rpGetFailHeartbeats :: !(C.SystemId -> m (Either Text [C.QueueItem]))
+  , rpFailAllHeartbeatExpired :: !(C.SystemId -> m (Either Text ()))
+  , rpGotHeartbeat :: !(C.QueueItemId -> m (Either Text ()))
   }
 

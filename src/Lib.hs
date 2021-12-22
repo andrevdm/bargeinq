@@ -8,7 +8,7 @@ module Lib
     ) where
 
 import           Verset
-import           Control.Lens ((^.))
+import           Control.Lens ((^.), (^..), traversed)
 import qualified Data.Time as DT
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
@@ -112,4 +112,10 @@ newUserCmpDemo bq =
 
     , CUsr.usrNotifyWorkItemFailedNoMoreRetries = \wi ->
         putText $ "~~No more retries" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)
+
+    , CUsr.usrNotifyHeartbeatsMissed = Just $ \qis ->
+        putText $ "~~Heartbeats missed" <> show (qis ^.. traversed . C.qiId)
+
+    , CUsr.usrNotifyHeartbeatsFailed = \qis ->
+        putText $ "~~Heartbeats failed" <> show (qis ^.. traversed . C.qiId)
     }

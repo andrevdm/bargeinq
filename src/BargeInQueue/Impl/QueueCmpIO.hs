@@ -284,7 +284,26 @@ runHeartbeatChecks
   -> Int
   -> C.SystemConfig
   -> m ()
-runHeartbeatChecks pgCmp logCmp repoCmp envCmp periodSeconds sys = forever $ do
+runHeartbeatChecks _pgCmp logCmp repoCmp envCmp periodSeconds sys = forever $ do
+  usrCmp <- CEnv.envDemandUser envCmp
+  let sysId = sys ^. C.sysId
+
   UC.threadDelay $ 1000000 * periodSeconds
-  --missed <- CR.rpGetMissedHeartbeats repoCmp
-  pass
+
+  -- Fail all that missed too many heartbeats
+  -- Call this before the code below so that the failed ones are removed first
+  CR.rpFailAllHeartbeatExpired repoCmp sysId >>= \case
+    Right _ -> pass
+    Left e -> CL.logError' logCmp "Error failing missed heartbeats" e
+
+  -- Notify the user, if the want notifications of missing heartbeats
+  case CUsr.usrNotifyHeartbeatsMissed usrCmp of
+    Nothing -> pass
+    Just notify -> do
+      missed <- CR.rpGetMissedHeartbeats repoCmp sysId >>= \case
+        Right r -> pure r
+        Left e -> do
+          CL.logError' logCmp "Error getting missed heartbeats" e
+          pure []
+      unless (null missed) $ notify missed
+

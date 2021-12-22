@@ -55,6 +55,15 @@ module BargeInQueue.Core
     , hbHeartbeatExpectedEverySeconds
     , hbHeartbeatNumMissedForError
 
+    , QueueItem(..)
+    , qiId
+    , qiWorkItemId
+    , qiLockedUntil
+    , qiCreatedAt
+    , qiHeartbeatAt
+    , qiDequeuedAt
+    , qiFailReason
+
     , QueueItemId(..)
     , WorkItemId(..)
     , SystemId(..)
@@ -144,6 +153,16 @@ data DequeuedActiveItem = DequeuedActiveItem
   } deriving (Show)
 
 
+data QueueItem = QueueItem
+  { _qiId :: !QueueItemId
+  , _qiWorkItemId :: !WorkItemId
+  , _qiLockedUntil :: !(Maybe UTCTime)
+  , _qiCreatedAt :: UTCTime
+  , _qiHeartbeatAt :: !(Maybe UTCTime)
+  , _qiDequeuedAt :: !(Maybe UTCTime)
+  , _qiFailReason :: !(Maybe FailReason)
+  } deriving (Show)
+
 data FailReason
   = FrError
   | FrHeartbeatTimeout
@@ -158,6 +177,7 @@ failReasonToId FrError = 543000
 failReasonToId FrHeartbeatTimeout = 543001
 failReasonToId FrManualFail = 543002
 failReasonToId FrManualExpire = 543003
+failReasonToId FrTimeout = 543004
 
 failReasonFromId :: Int -> FailReason
 failReasonFromId 543001 = FrHeartbeatTimeout
@@ -173,3 +193,4 @@ makeLenses ''WorkItem
 makeLenses ''SystemConfig
 makeLenses ''WorkType
 makeLenses ''HeartbeatSettings
+makeLenses ''QueueItem

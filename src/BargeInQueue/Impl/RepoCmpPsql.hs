@@ -38,6 +38,7 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpExpireQueueItem = failQueueItem pgCmp "expiring" (Just C.FrManualExpire)
     , CR.rpFailQueueItem = failQueueItem pgCmp "failing" (Just C.FrManualFail)
     , CR.rpPauseWorkItem = pauseWorkItem pgCmp dtCmp
+    , CR.rpGetQueueItem = getQueueItem pgCmp
     , CR.rpGetWorkItem = getWorkItem pgCmp
     , CR.rpGetWorkType = getWorkType pgCmp
     , CR.rpUpdateWorkItemForRetry = updateWorkItemForRetry pgCmp
@@ -45,6 +46,10 @@ newRepoCmpPsql pgCmp dtCmp =
     , CR.rpListUnqueuedUnblockedWorkItems = listUnqueuedUnblockedWorkItems pgCmp
     , CR.rpQueueAllUnblockedWorkItems = queueAllUnblockedWorkItems pgCmp
     , CR.rpExtendTimeout = extendTimeout pgCmp
+    , CR.rpGetMissedHeartbeats = getMissedHeartbeats pgCmp False
+    , CR.rpGetFailHeartbeats = getMissedHeartbeats pgCmp True
+    , CR.rpFailAllHeartbeatExpired = failAllHeartbeatExpired pgCmp
+    , CR.rpGotHeartbeat = gotHeartbeat pgCmp
     }
 
 
@@ -228,6 +233,43 @@ getWorkType pgCmp (C.WorkTypeId wtid) = do
         , C._wtHeartbeatSettings = hb
         }
     Right _ -> pure . Left $ "Error fetching work type: Invalid data returned"
+
+
+getQueueItem
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.QueueItemId
+  -> m (Either Text C.QueueItem)
+getQueueItem pgCmp (C.QueueItemId qid) = do
+  let sql = [r|
+    select
+        wiId
+      , locked_until
+      , created_at
+      , heartbeat_at
+      , dequeued_at
+      , frId
+    from
+      bq_queue
+    where
+      qid = ?
+  |]
+  CPg.pgQuery pgCmp sql (CPg.Only qid) "queue.fetch" >>= \case
+    Left e -> pure . Left $ "Exception fetching queue item:" <> show qid <> "\n" <> show e
+    Right [] -> pure . Left $ "Queue item does not exist, fetching queue item:" <> show qid
+    Right [(wiid, lockedUntil, created, hb, dq, frid)] ->
+      pure . Right $ C.QueueItem
+        { C._qiId = C.QueueItemId qid
+        , C._qiWorkItemId = C.WorkItemId wiid
+        , C._qiLockedUntil = lockedUntil
+        , C._qiCreatedAt = created
+        , C._qiHeartbeatAt = hb
+        , C._qiDequeuedAt = dq
+        , C._qiFailReason = C.failReasonFromId <$> frid
+        }
+    Right _ -> pure . Left $ "Error fetching queue item: Invalid data returned"
+
 
 
 getWorkItem
@@ -467,4 +509,112 @@ getSystem pgCmp (C.SystemId sysId) = do
         , C._sysHeartbeatCheckPeriodSeconds = hb
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
+
+
+
+getMissedHeartbeats
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> Bool
+  -> C.SystemId
+  -> m (Either Text [C.QueueItem])
+getMissedHeartbeats pgCmp forFailed (C.SystemId sysId) = do
+  let sql = [r|
+    select
+        q.qid
+      , q.wiId
+      , q.locked_until
+      , q.created_at
+      , q.heartbeat_at
+      , q.dequeued_at
+      , q.frId
+    from
+      bq_queue q
+    inner join bq_work_item wi
+      on wi.wiid = q.wiid
+    inner join bq_work_type wt
+      on wt.wtid = wi.wtid
+    where
+      wt.system_id = ?
+      and q.frId is null
+      and wt.heartbeat_expected_every_seconds is not null
+      and wt.heartbeat_num_missed_for_error is not null
+      and q.dequeued_at is not null
+      and coalesce(q.heartbeat_at, q.dequeued_at) + (interval '1 second' * wt.heartbeat_expected_every_seconds * (wt.heartbeat_num_missed_for_error * ?)) < now()
+  |]
+  let mul = if forFailed then 1 else 0 -- Multiple with zero to stop the `* heartbeat_num_missed_for_error` check
+  CPg.pgQuery pgCmp sql (sysId, mul :: Int) "heartbeats.missed.list" >>= \case
+    Left e -> pure . Left $ "Exception listing missed heartbeats:\n" <> show e
+    Right rs -> pure . Right $ rs <&> \(qid, wiid, lockedUntil, created, hb, dq, frid) ->
+      C.QueueItem
+        { C._qiId = C.QueueItemId qid
+        , C._qiWorkItemId = C.WorkItemId wiid
+        , C._qiLockedUntil = lockedUntil
+        , C._qiCreatedAt = created
+        , C._qiHeartbeatAt = hb
+        , C._qiDequeuedAt = dq
+        , C._qiFailReason = C.failReasonFromId <$> frid
+        }
+
+
+
+failAllHeartbeatExpired
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.SystemId
+  -> m (Either Text ())
+failAllHeartbeatExpired pgCmp (C.SystemId sysId) = do
+  let sql = [r|
+    update
+      bq_queue xq
+    set
+      frid = ?
+    where exists (
+      select
+        1
+      from
+        bq_queue q
+      inner join bq_work_item wi
+        on wi.wiid = q.wiid
+      inner join bq_work_type wt
+        on wt.wtid = wi.wtid
+      where
+        q.qid = xq.qid
+        and wt.system_id = ?
+        and q.frId is null
+        and wt.heartbeat_expected_every_seconds is not null
+        and wt.heartbeat_num_missed_for_error is not null
+        and q.dequeued_at is not null
+        and coalesce(q.heartbeat_at, q.dequeued_at) + (interval '1 second' * wt.heartbeat_expected_every_seconds * wt.heartbeat_num_missed_for_error) < now()
+    )
+  |]
+  CPg.pgExecute pgCmp sql (C.failReasonToId C.FrHeartbeatTimeout, sysId) "queue.fail.heartbeat" >>= \case
+    Left e -> pure . Left $ "Exception failing heartbeats:\n" <> show e
+    Right _ -> pure . Right $ ()
+
+
+
+gotHeartbeat
+  :: forall m.
+     (MonadUnliftIO m)
+  => CPg.PsqlCmp m
+  -> C.QueueItemId
+  -> m (Either Text ())
+gotHeartbeat pgCmp (C.QueueItemId qid) = do
+  let sql = [r|
+    update
+      bq_queue
+    set
+      heartbeat_at = now()
+    where
+      qid = ?
+  |]
+  CPg.pgExecute pgCmp sql (CPg.Only qid) "queue.set.heartbeat" >>= \case
+    Left e -> pure . Left $ "Exception setting heartbeat: " <> show qid <> " \n" <> show e
+    Right _ -> pure . Right $ ()
+
+
+
 

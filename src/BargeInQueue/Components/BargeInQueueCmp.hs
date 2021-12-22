@@ -19,4 +19,11 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqFailQueueItem :: !(C.QueueItemId -> m ())
   , bqListUnqueuedUnblockedWorkItems :: !(Int -> m (Either Text [C.WorkItem]))
   , bqQueueAllUnblockedWorkItems :: !(m (Either Text ()))
+  , bqGotHeartBeat :: !(C.QueueItemId -> m (Either Text ()))
+
+  , bqListSystems :: !(m (Either Text [C.SystemConfig]))
+  , bqGetSystem :: !(C.SystemId -> m (Either Text (Maybe C.SystemConfig)))
+  , bqGetQueueItem :: !(C.QueueItemId -> m (Either Text C.QueueItem))
+  , bqGetWorkItem :: !(C.WorkItemId -> m (Either Text C.WorkItem))
+  , bqGetWorkType :: !(C.WorkTypeId -> m (Either Text C.WorkType))
   }
