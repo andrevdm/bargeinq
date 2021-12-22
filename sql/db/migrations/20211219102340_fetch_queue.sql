@@ -39,6 +39,8 @@ BEGIN
         xq.qid
       from
         bq_queue xq
+      inner join bq_work_item xwi
+        on xwi.wiid = xq.wiid
       where exists
         (
           (select
@@ -52,7 +54,7 @@ BEGIN
              and lwi.system_id = _sys_id
              and lq.frId is not null
            order by
-             lwi.created_at asc
+             lwi.priority desc, lwi.created_at asc
            limit 1
           )
           union
@@ -71,12 +73,12 @@ BEGIN
              and (lq.locked_until is null or lq.locked_until < now())
              and ((max_items is null) or (active_items <= max_items)) -- Only get if no limit, or not above max items
            order by
-             lwi.created_at asc
+             lwi.priority desc, lwi.created_at asc
            limit 1
           )
         )
       order by
-        xq.frId NULLS LAST, xq.created_at asc -- errors before non-error
+        xq.frId NULLS LAST, xwi.priority desc, xq.created_at asc -- errors before non-error
       limit 1
       for update skip locked
     ),

@@ -2,6 +2,7 @@
 CREATE TABLE if not exists bq_system
 (
   system_id uuid NOT NULL,
+  name text COLLATE pg_catalog."default" NOT NULL,
   poll_period_seconds int NOT NULL,
   locked_until timestamp with time zone null,
   locked_by text COLLATE pg_catalog."default" null,
@@ -48,13 +49,15 @@ CREATE TABLE if not exists bq_work_item
   backoff_count int NOT NULL,
   attempts int NOT NULL,
   work_data text NULL,
+  priority int not null,
 
   CONSTRAINT bq_work_item_pkey PRIMARY KEY (wiId)
 );
 CREATE INDEX if not exists ix_bq_work_item_wtId ON bq_work_item (wtId);
 CREATE INDEX if not exists ix_bq_work_item_system_id ON bq_work_item (system_id);
 CREATE INDEX if not exists ix_bq_work_item_ignore_until ON bq_work_item (ignore_until);
-CREATE INDEX if not exists ix_bq_work_item_group_id ON bq_work_item (group_id);
+--CREATE INDEX if not exists ix_bq_work_item_group_id ON bq_work_item (group_id);
+CREATE INDEX if not exists ix_bq_work_item_priority ON bq_work_item (priority);
 
 CREATE TABLE if not exists bq_work_item_blockers
 (

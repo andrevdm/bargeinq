@@ -112,17 +112,18 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
       , wi.backoff_count
       , wi.attempts
       , wi.work_data
+      , wi.priority
     from
       vw_bq_unblocked_unqueued wi
     where
       wi.system_id = ?
     order by
-      wi.created_at asc
+      wi.priority desc, wi.created_at asc
     limit (?)
   |]
   CPg.pgQuery pgCmp sql (sysId, maxItems) "work_items.list_unblocked" >>= \case
     Left e -> pure . Left $ "Exception listing unblocked work items:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData) ->
+    Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority) ->
       C.WorkItem
         { C._wiId = C.WorkItemId wiid
         , C._wiSystemId = C.SystemId sysId
@@ -135,6 +136,7 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
         , C._wiBackoffCount = backoffCount
         , C._wiAttempts = attempts
         , C._wiData = workData
+        , C._wiPriority = priority
         }
 
 
@@ -291,6 +293,7 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
       , backoff_count
       , attempts
       , work_data
+      , priority
     from
       bq_work_item
     where
@@ -299,7 +302,7 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
   CPg.pgQuery pgCmp sql (CPg.Only wiid) "workItem.fetch" >>= \case
     Left e -> pure . Left $ "Exception fetching work item:" <> show wiid <> "\n" <> show e
     Right [] -> pure . Left $ "Work item does not exist, fetching work item:" <> show wiid
-    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData)] ->
+    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority)] ->
       pure . Right $ C.WorkItem
         { C._wiId = C.WorkItemId wiid
         , C._wiSystemId = C.SystemId sysId
@@ -312,6 +315,7 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
         , C._wiBackoffCount = backoffCount
         , C._wiAttempts = attempts
         , C._wiData = workData
+        , C._wiPriority = priority
         }
     Right _ -> pure . Left $ "Error fetching work item: Invalid data returned"
 
@@ -457,12 +461,13 @@ listSystems pgCmp = do
       , max_active_items
       , auto_queue_unblocked
       , heartbeat_check_period_seconds
+      , name
     from
       bq_system
   |]
   CPg.pgQuery_ pgCmp sql "systems.list" >>= \case
     Left e -> pure . Left $ "Exception listing systems:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb) ->
+    Right rs -> pure . Right $ rs <&> \(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb, name) ->
       C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
@@ -471,6 +476,7 @@ listSystems pgCmp = do
         , C._sysMaxActiveItems = maxActive
         , C._sysAutoQueueUnblocked = autoQueue
         , C._sysHeartbeatCheckPeriodSeconds = hb
+        , C._sysName = name
         }
 
 
@@ -490,6 +496,7 @@ getSystem pgCmp (C.SystemId sysId) = do
       , max_active_items
       , auto_queue_unblocked
       , heartbeat_check_period_seconds
+      , name
     from
       bq_system
     where
@@ -498,7 +505,7 @@ getSystem pgCmp (C.SystemId sysId) = do
   CPg.pgQuery pgCmp sql (CPg.Only sysId) "systems.list" >>= \case
     Left e -> pure . Left $ "Exception getting system:\n" <> show e
     Right [] -> pure . Right $ Nothing
-    Right [(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb)] ->
+    Right [(sid, poll, lockUntil, lockedBy, maxActive, autoQueue, hb, name)] ->
       pure . Right . Just $ C.SystemConfig
         { C._sysId = C.SystemId sid
         , C._sysPollPeriodSeconds = poll
@@ -507,6 +514,7 @@ getSystem pgCmp (C.SystemId sysId) = do
         , C._sysMaxActiveItems = maxActive
         , C._sysAutoQueueUnblocked = autoQueue
         , C._sysHeartbeatCheckPeriodSeconds = hb
+        , C._sysName = name
         }
     Right _ -> pure . Left $ "Error getting system: Invalid data returned"
 

@@ -18,6 +18,7 @@ module BargeInQueue.Core
     , sysLockedBy
     , sysAutoQueueUnblocked
     , sysHeartbeatCheckPeriodSeconds
+    , sysName
 
     , WorkItem(..)
     , wiId
@@ -31,6 +32,7 @@ module BargeInQueue.Core
     , wiBackoffCount
     , wiAttempts
     , wiData
+    , wiPriority
 
     , DequeuedActiveItem(..)
     , dqaQueueId
@@ -124,6 +126,7 @@ data SystemConfig = SystemConfig
   , _sysMaxActiveItems :: !(Maybe Int)
   , _sysAutoQueueUnblocked :: !Bool
   , _sysHeartbeatCheckPeriodSeconds :: !(Maybe Int)
+  , _sysName :: !Text
   } deriving (Show)
 
 
@@ -139,6 +142,7 @@ data WorkItem = WorkItem
   , _wiBackoffCount :: !Int
   , _wiAttempts :: !Int
   , _wiData :: !(Maybe Text)
+  , _wiPriority :: !Int
   } deriving (Show)
 
 

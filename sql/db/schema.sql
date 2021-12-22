@@ -27,6 +27,7 @@ DECLARE
       on q.wiid = q.wiid
     where
       wi.system_id = _sys_id
+      and q.frId is null
       and (q.dequeued_at is not null and ( q.locked_until is not null
                                            or q.locked_until >= now()
                                          )
@@ -44,6 +45,8 @@ BEGIN
         xq.qid
       from
         bq_queue xq
+      inner join bq_work_item xwi
+        on xwi.wiid = xq.wiid
       where exists
         (
           (select
@@ -57,7 +60,7 @@ BEGIN
              and lwi.system_id = _sys_id
              and lq.frId is not null
            order by
-             lwi.created_at asc
+             lwi.priority desc, lwi.created_at asc
            limit 1
           )
           union
@@ -76,12 +79,12 @@ BEGIN
              and (lq.locked_until is null or lq.locked_until < now())
              and ((max_items is null) or (active_items <= max_items)) -- Only get if no limit, or not above max items
            order by
-             lwi.created_at asc
+             lwi.priority desc, lwi.created_at asc
            limit 1
           )
         )
       order by
-        xq.frId NULLS LAST, xq.created_at asc -- errors before non-error
+        xq.frId NULLS LAST, xwi.priority desc, xq.created_at asc -- errors before non-error
       limit 1
       for update skip locked
     ),
@@ -217,6 +220,7 @@ CREATE TABLE public.bq_queue (
 
 CREATE TABLE public.bq_system (
     system_id uuid NOT NULL,
+    name text NOT NULL,
     poll_period_seconds integer NOT NULL,
     locked_until timestamp with time zone,
     locked_by text,
@@ -241,7 +245,8 @@ CREATE TABLE public.bq_work_item (
     group_id uuid,
     backoff_count integer NOT NULL,
     attempts integer NOT NULL,
-    work_data text
+    work_data text,
+    priority integer NOT NULL
 );
 
 
@@ -412,17 +417,17 @@ CREATE INDEX ix_bq_work_item_blockers_blocker ON public.bq_work_item_blockers US
 
 
 --
--- Name: ix_bq_work_item_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_bq_work_item_group_id ON public.bq_work_item USING btree (group_id);
-
-
---
 -- Name: ix_bq_work_item_ignore_until; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_bq_work_item_ignore_until ON public.bq_work_item USING btree (ignore_until);
+
+
+--
+-- Name: ix_bq_work_item_priority; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_bq_work_item_priority ON public.bq_work_item USING btree (priority);
 
 
 --

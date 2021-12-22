@@ -1,8 +1,8 @@
 -- migrate:up
 insert into bq_system
-  (system_id, poll_period_seconds, auto_queue_unblocked, max_active_items, heartbeat_check_period_seconds)
+  (system_id, name, poll_period_seconds, auto_queue_unblocked, max_active_items, heartbeat_check_period_seconds)
 values
-('36bad147-4370-4940-a0eb-bc08c3edf212', 20, true, null, 10);
+('36bad147-4370-4940-a0eb-bc08c3edf212', 'testSys', 20, true, null, 10);
 
 insert into bq_work_type
    ( wtId
