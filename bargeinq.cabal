@@ -1,8 +1,8 @@
 cabal-version:       3.0
 name:                bargeinq
-version:             0.1.0.0
-synopsis:            SYNOPSIS HERE
-description:         DESCRIPTION HERE
+version:             0.1.0.1
+synopsis:            Simple postgres backed job queue
+description:         Job queue built on postgres
 homepage:            https://github.com/andrevdm//bargeinq#readme
 license:             BSD-3-Clause OR Apache-2.0
 license-file:        LICENSE
