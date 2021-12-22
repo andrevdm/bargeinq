@@ -10,6 +10,8 @@ module BargeInQueue.Core
     , nwiGroupId
     , nwiOverrideIgnoreUntil
     , nwiOverrideRetriesLeft
+    , nwiOverrideBackoffSeconds
+    , nwiOverrideExecEnv
 
     , SystemConfig(..)
     , sysId
@@ -33,6 +35,8 @@ module BargeInQueue.Core
     , wiAttempts
     , wiData
     , wiPriority
+    , wiBackoffSeconds
+    , wiExecEnv
 
     , DequeuedActiveItem(..)
     , dqaQueueId
@@ -115,6 +119,8 @@ data NewWorkItem = NewWorkItem
   , _nwiDependsOnWorkItem :: ![WorkItemId]
   , _nwiOverrideIgnoreUntil :: !(Maybe UTCTime)
   , _nwiOverrideRetriesLeft :: !(Maybe Int)
+  , _nwiOverrideBackoffSeconds :: !(Maybe [Int])
+  , _nwiOverrideExecEnv :: !(Maybe Text)
   } deriving (Show, Eq)
 
 
@@ -143,6 +149,8 @@ data WorkItem = WorkItem
   , _wiAttempts :: !Int
   , _wiData :: !(Maybe Text)
   , _wiPriority :: !Int
+  , _wiBackoffSeconds :: ![Int]
+  , _wiExecEnv :: !Text
   } deriving (Show)
 
 

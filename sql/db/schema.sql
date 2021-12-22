@@ -247,7 +247,9 @@ CREATE TABLE public.bq_work_item (
     backoff_count integer NOT NULL,
     attempts integer NOT NULL,
     work_data text,
-    priority integer NOT NULL
+    priority integer NOT NULL,
+    backoff_seconds_override integer[],
+    exec_environment_override text
 );
 
 

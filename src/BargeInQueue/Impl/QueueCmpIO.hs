@@ -184,7 +184,7 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp envCmp sys dqi = do
         Left e -> UE.throwString . Txt.unpack $ "Error updating work item for retry" <> show (dqi ^. C.dqaWorkItemId) <> "\n" <> e
 
       -- Queue to make it active but locked for the backoff period
-      let backoffUntil = DT.addUTCTime (getBackoff (wt ^. C.wtDefaultBackoffSeconds) (wi ^. C.wiAttempts) 120) now
+      let backoffUntil = DT.addUTCTime (getBackoff (wi ^. C.wiBackoffSeconds) (wi ^. C.wiAttempts) 120) now
 
       qid <- CR.rpCreateQueueItem repoCmp (wi ^. C.wiId) backoffUntil >>= \case
         Right q -> pure q

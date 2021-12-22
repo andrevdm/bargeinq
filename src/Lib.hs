@@ -56,6 +56,8 @@ run = do
          , C._nwiDependsOnWorkItem = []
          , C._nwiOverrideIgnoreUntil = Nothing
          , C._nwiOverrideRetriesLeft = Nothing
+         , C._nwiOverrideBackoffSeconds = Nothing
+         , C._nwiOverrideExecEnv = Nothing
          }
        ]
 
@@ -69,6 +71,8 @@ run = do
          , C._nwiDependsOnWorkItem = []
          , C._nwiOverrideIgnoreUntil = Nothing
          , C._nwiOverrideRetriesLeft = Nothing
+         , C._nwiOverrideBackoffSeconds = Nothing
+         , C._nwiOverrideExecEnv = Nothing
          }
        ]
 

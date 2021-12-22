@@ -113,8 +113,12 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
       , wi.attempts
       , wi.work_data
       , wi.priority
+      , coalesce(wi.backoff_seconds_override, wt.default_backoff_seconds)
+      , coalesce(wi.exec_environment_override, wt.default_exec_environment)
     from
       vw_bq_unblocked_unqueued wi
+    inner join bq_work_type wt
+      on wt.wtId = wi.wtId
     where
       wi.system_id = ?
     order by
@@ -123,7 +127,7 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
   |]
   CPg.pgQuery pgCmp sql (sysId, maxItems) "work_items.list_unblocked" >>= \case
     Left e -> pure . Left $ "Exception listing unblocked work items:\n" <> show e
-    Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority) ->
+    Right rs -> pure . Right $ rs <&> \(wiid, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority, CPg.PGArray bk, env) -> do
       C.WorkItem
         { C._wiId = C.WorkItemId wiid
         , C._wiSystemId = C.SystemId sysId
@@ -137,6 +141,8 @@ listUnqueuedUnblockedWorkItems pgCmp (C.SystemId sysId) maxItems = do
         , C._wiAttempts = attempts
         , C._wiData = workData
         , C._wiPriority = priority
+        , C._wiBackoffSeconds = bk
+        , C._wiExecEnv = env
         }
 
 
@@ -283,26 +289,30 @@ getWorkItem
 getWorkItem pgCmp (C.WorkItemId wiid) = do
   let sql = [r|
     select
-        system_id
-      , name
-      , wtid
-      , ignore_until
-      , retries_left
-      , created_at
-      , group_id
-      , backoff_count
-      , attempts
-      , work_data
-      , priority
+        wi.system_id
+      , wi.name
+      , wi.wtid
+      , wi.ignore_until
+      , wi.retries_left
+      , wi.created_at
+      , wi.group_id
+      , wi.backoff_count
+      , wi.attempts
+      , wi.work_data
+      , wi.priority
+      , coalesce(wi.backoff_seconds_override, wt.default_backoff_seconds)
+      , coalesce(wi.exec_environment_override, wt.default_exec_environment)
     from
-      bq_work_item
+      bq_work_item wi
+    inner join bq_work_type wt
+      on wt.wtId = wi.wtId
     where
-      wiid = ?
+      wi.wiid = ?
   |]
   CPg.pgQuery pgCmp sql (CPg.Only wiid) "workItem.fetch" >>= \case
     Left e -> pure . Left $ "Exception fetching work item:" <> show wiid <> "\n" <> show e
     Right [] -> pure . Left $ "Work item does not exist, fetching work item:" <> show wiid
-    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority)] ->
+    Right [(sysId, name, wtid, ignoreUntil, retriesLeft, createdAt, groupId, backoffCount, attempts, workData, priority, CPg.PGArray bk, env)] -> do
       pure . Right $ C.WorkItem
         { C._wiId = C.WorkItemId wiid
         , C._wiSystemId = C.SystemId sysId
@@ -316,6 +326,8 @@ getWorkItem pgCmp (C.WorkItemId wiid) = do
         , C._wiAttempts = attempts
         , C._wiData = workData
         , C._wiPriority = priority
+        , C._wiBackoffSeconds = bk
+        , C._wiExecEnv = env
         }
     Right _ -> pure . Left $ "Error fetching work item: Invalid data returned"
 

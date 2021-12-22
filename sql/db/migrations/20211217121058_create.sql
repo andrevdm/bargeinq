@@ -50,6 +50,8 @@ CREATE TABLE if not exists bq_work_item
   attempts int NOT NULL,
   work_data text NULL,
   priority int not null,
+  backoff_seconds_override int[] NULL,
+  exec_environment_override text COLLATE pg_catalog."default" NULL,
 
   CONSTRAINT bq_work_item_pkey PRIMARY KEY (wiId)
 );
