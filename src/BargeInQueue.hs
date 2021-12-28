@@ -13,6 +13,7 @@ import qualified Control.Concurrent.STM.TBMQueue as TBMQ
 import           Control.Lens ((^.))
 import qualified Data.Text as Txt
 import           UnliftIO.Exception (throwString)
+import qualified UnliftIO.QSem as USem
 
 
 import qualified BargeInQueue.Core as C
@@ -33,8 +34,9 @@ mkBargeInQueue
   -> Text
   -> CPg.TracePg
   -> CL.LogLevel
+  -> Maybe USem.QSem
   -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId connStr tracePg minLogLevel = do
+mkBargeInQueue sysId connStr tracePg minLogLevel threadBound = do
   -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
@@ -58,7 +60,7 @@ mkBargeInQueue sysId connStr tracePg minLogLevel = do
   -- Create the rest
   env <- CE.newEnvCmpIO sysConfig
   let uu = CUu.newUuidCmpIO @IO
-  q <- CQ.newQueueCmpIO @IO pg lg repo env dt sysConfig
+  q <- CQ.newQueueCmpIO @IO pg lg repo env dt sysConfig threadBound
 
 
   --ws <- CR.rpListUnqueuedUnblockedWorkItems repo sysId 10

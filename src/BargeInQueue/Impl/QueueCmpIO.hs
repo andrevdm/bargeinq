@@ -18,6 +18,7 @@ import           UnliftIO (MonadUnliftIO)
 import qualified UnliftIO.Async as UA
 import qualified UnliftIO.Concurrent as UC
 import qualified UnliftIO.Exception as UE
+import qualified UnliftIO.QSem as USem
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.DateCmp as CDt
@@ -39,14 +40,15 @@ newQueueCmpIO
   -> CEnv.EnvCmp m
   -> CDt.DateCmp m
   -> C.SystemConfig
+  -> Maybe USem.QSem
   -> m (CQ.QueueCmp m)
-newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys = do
+newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys threadBound = do
   pollGate <- Th.newOpenGate
 
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   pure CQ.QueueCmp
-    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan pollGate
+    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan pollGate threadBound
     , CQ.qCheckUnblocked = checkUnblocked repoCmp sys
     , CQ.qTriggerPoll = Th.openGate pollGate
     }
@@ -63,13 +65,14 @@ startQueue
   -> CDt.DateCmp m
   -> CPg.ChanName
   -> Th.Gate
+  -> Maybe USem.QSem
   -> m ()
-startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate = do
+startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate threadBound' = do
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
     CL.logTest' logCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop repoCmp sys pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys)
+  void . UA.async $ runPollLoop repoCmp sys pollGate (onLoop threadBound')
 
   CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
@@ -77,6 +80,21 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate = do
   case sys ^. C.sysHeartbeatCheckPeriodSeconds of
     Nothing -> pass
     (Just hbSeconds) -> void . UA.async $ runHeartbeatChecks pgCmp logCmp repoCmp envCmp hbSeconds sys
+
+  where
+    onLoop Nothing =
+      -- No (local) bounded concurrency/semaphore, simply try to run next item
+      tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys pass
+
+    onLoop (Just sem) = do
+      -- Only try fetch if there is a free semaphore
+      UE.onException
+        (do
+          USem.waitQSem sem
+          -- NB every non-exception exit in tryProcessNextActiveItem *MUST* call USem.signalSQem
+          tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys (USem.signalQSem sem)
+        )
+        (USem.signalQSem sem)
 
 
 -- | See if there is actually an item to work with
@@ -88,24 +106,25 @@ tryProcessNextActiveItem
   -> CL.LogCmp m
   -> CDt.DateCmp m
   -> C.SystemConfig
+  -> m ()
   -> m Bool
-tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
+tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys release = do
   usrCmp <- CEnv.envDemandUser envCmp
 
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
-    Right Nothing -> pure False -- Nothing was returned
-    Left e -> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
+    Right Nothing -> release >> pure False -- Nothing was returned
+    Left e -> release >> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 
     Right (Just dqi) -> do
       case (dqi ^. C.dqaFailReason, dqi ^. C.dqaDequeuedAt) of
           -- Process active item
-        (Nothing, Nothing) -> gotNewActiveItem usrCmp dqi >> pure True
+        (Nothing, Nothing) -> gotNewActiveItem usrCmp dqi >> pure True --NB release called inside async so that its only released after the work is done
           -- An explicit fail was set
-        (Just fr, _) -> queuedItemFailed usrCmp dqi fr >> pure True
+        (Just fr, _) -> release >> queuedItemFailed usrCmp dqi fr >> pure True
           -- If the item already had dequeued_at set then it was previously dequeued
           -- The only way it could be returned here is if the lock period expired
           -- i.e. if it timed out
-        (_, Just _) -> lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
+        (_, Just _) -> release >> lastLockTimeoutExpiredForActiveItem usrCmp dqi >> pure True
 
   where
     errorDequeueing e = do
@@ -113,7 +132,7 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
 
     gotNewActiveItem usrCmp dqi =
       catchErrorAsync "user handler" $
-        CUsr.usrProcessActiveItem usrCmp dqi
+        UE.finally (CUsr.usrProcessActiveItem usrCmp dqi) release
 
     queuedItemFailed usrCmp dqi fr = do
       catchErrorAsync "Notify work item failed" (CUsr.usrNotifyWorkItemFailed usrCmp dqi fr)
