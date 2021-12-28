@@ -15,7 +15,7 @@ import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
 import qualified System.IO as IO
 import           UnliftIO (MonadUnliftIO, throwString)
-import qualified UnliftIO.QSem as USem
+--import qualified UnliftIO.QSem as USem
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
@@ -36,13 +36,13 @@ run :: IO ()
 run = do
   --let usrCmp = newUserCmpDemo
 
-  sem <- USem.newQSem 1
+  --sem <- USem.newQSem 2
   bq <- Bq.mkBargeInQueue
           testSysId
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceNone -- Standard
           CL.LevelDebug
-          (Just sem) --Nothing
+          Nothing -- (Just sem) --Nothing
 
   let usrCmp = newUserCmpDemo @IO bq
   CBq.bqStartQueue bq usrCmp

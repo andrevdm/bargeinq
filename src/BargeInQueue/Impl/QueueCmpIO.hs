@@ -84,7 +84,7 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate threadBound' 
   where
     onLoop Nothing =
       -- No (local) bounded concurrency/semaphore, simply try to run next item
-      tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys pass
+      tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys pass pass
 
     onLoop (Just sem) = do
       -- Only try fetch if there is a free semaphore
@@ -92,7 +92,7 @@ startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate threadBound' 
         (do
           USem.waitQSem sem
           -- NB every non-exception exit in tryProcessNextActiveItem *MUST* call USem.signalSQem
-          tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys (USem.signalQSem sem)
+          tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys (USem.signalQSem sem) (USem.signalQSem sem >> Th.openGate pollGate)
         )
         (USem.signalQSem sem)
 
@@ -107,8 +107,9 @@ tryProcessNextActiveItem
   -> CDt.DateCmp m
   -> C.SystemConfig
   -> m ()
+  -> m ()
   -> m Bool
-tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys release = do
+tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys release releaseAfterDequeue = do
   usrCmp <- CEnv.envDemandUser envCmp
 
   CR.rpFetchNextActiveItem repoCmp sys >>= \case
@@ -132,7 +133,7 @@ tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys release = do
 
     gotNewActiveItem usrCmp dqi =
       catchErrorAsync "user handler" $
-        UE.finally (CUsr.usrProcessActiveItem usrCmp dqi) release
+        UE.finally (CUsr.usrProcessActiveItem usrCmp dqi) releaseAfterDequeue
 
     queuedItemFailed usrCmp dqi fr = do
       catchErrorAsync "Notify work item failed" (CUsr.usrNotifyWorkItemFailed usrCmp dqi fr)
