@@ -10,24 +10,40 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: bq_fetch_queue(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: bq_fetch_queue(uuid, text, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid) RETURNS TABLE(r_qid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text, r_frid integer)
+CREATE FUNCTION public.bq_fetch_queue(_sys_id uuid, _host_name text, _host_max_items integer) RETURNS TABLE(r_qid bigint, r_wiid uuid, r_wtid uuid, r_wi_name text, r_dequeued_at timestamp with time zone, r_work_data text, r_frid integer)
     LANGUAGE plpgsql
     AS $$
 DECLARE
   max_items integer := (select max_active_items from bq_system where system_id = _sys_id);
-  active_items integer := (
+  total_active_items integer := (
     select
       count(1)
     from
       bq_queue q
     inner join bq_work_item wi
-      on q.wiid = q.wiid
+      on q.wiid = wi.wiid
     where
       wi.system_id = _sys_id
       and q.frId is null
+      and (q.dequeued_at is not null and ( q.locked_until is not null
+                                           or q.locked_until >= now()
+                                         )
+          )
+  );
+  host_active_items integer := (
+    select
+      count(1)
+    from
+      bq_queue q
+    inner join bq_work_item wi
+      on q.wiid = wi.wiid
+    where
+      wi.system_id = _sys_id
+      and q.frId is null
+      and q.host = _host_name
       and (q.dequeued_at is not null and ( q.locked_until is not null
                                            or q.locked_until >= now()
                                          )
@@ -77,7 +93,8 @@ BEGIN
              and lwi.system_id = _sys_id
              and lq.frId is null
              and (lq.locked_until is null or lq.locked_until < now())
-             and ((max_items is null) or (active_items <= max_items)) -- Only get if no limit, or not above max items
+             and ((max_items is null) or (total_active_items < max_items)) -- Only get if no limit, or not above max items
+             and ((_host_name is null) or (_host_max_items is null) or (host_active_items < _host_max_items))
            order by
              lwi.priority desc, lwi.created_at asc
            limit 1
@@ -113,6 +130,7 @@ BEGIN
   set
       locked_until = now() + (interval '1 second' * cte_data.dequeue_lock_period_seconds)
     , dequeued_at = COALESCE(q.dequeued_at, now())
+    , host = _host_name
   from
     cte_lock
   inner join cte_data
@@ -211,7 +229,8 @@ CREATE TABLE public.bq_queue (
     created_at timestamp with time zone NOT NULL,
     heartbeat_at timestamp with time zone,
     dequeued_at timestamp with time zone,
-    frid integer
+    frid integer,
+    host text
 );
 
 
@@ -385,6 +404,13 @@ CREATE INDEX ix_bq_queue_heartbeat_at ON public.bq_queue USING btree (heartbeat_
 
 
 --
+-- Name: ix_bq_queue_host; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_bq_queue_host ON public.bq_queue USING btree (host);
+
+
+--
 -- Name: ix_bq_queue_locked_until; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -452,6 +478,13 @@ CREATE INDEX ix_bq_work_item_wtid ON public.bq_work_item USING btree (wtid);
 --
 
 CREATE INDEX ix_bq_work_type_system_id ON public.bq_work_type USING btree (system_id);
+
+
+--
+-- Name: bq_queue tg_bq_queue_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tg_bq_queue_delete_notify AFTER DELETE ON public.bq_queue FOR EACH ROW EXECUTE PROCEDURE public.fn_bq_queue_notify();
 
 
 --

@@ -33,8 +33,10 @@ mkBargeInQueue
   -> Text
   -> CPg.TracePg
   -> CL.LogLevel
+  -> Text
+  -> Maybe Int
   -> IO (CBq.BargeInQueueCmp IO)
-mkBargeInQueue sysId connStr tracePg minLogLevel = do
+mkBargeInQueue sysId connStr tracePg minLogLevel hostName hostMaxItems = do
   -- Logging
   prnQ <- atomically $ TBMQ.newTBMQueue 1000
   let termWriter = CL.createQueueLogWriter prnQ
@@ -58,7 +60,12 @@ mkBargeInQueue sysId connStr tracePg minLogLevel = do
   -- Create the rest
   env <- CE.newEnvCmpIO sysConfig
   let uu = CUu.newUuidCmpIO @IO
-  q <- CQ.newQueueCmpIO @IO pg lg repo env dt sysConfig
+
+  let hostMax = case hostMaxItems of
+                  Nothing -> Nothing
+                  Just i -> Just (hostName, i)
+
+  q <- CQ.newQueueCmpIO @IO pg lg repo env dt sysConfig hostMax
 
 
   --ws <- CR.rpListUnqueuedUnblockedWorkItems repo sysId 10

@@ -39,14 +39,15 @@ newQueueCmpIO
   -> CEnv.EnvCmp m
   -> CDt.DateCmp m
   -> C.SystemConfig
+  -> Maybe (Text, Int)
   -> m (CQ.QueueCmp m)
-newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys = do
+newQueueCmpIO pgCmp lgCmp repoCmp envCmp dtCmp sys hostMax = do
   pollGate <- Th.newOpenGate
 
   let (C.SystemId sysId) = sys ^. C.sysId
   let chan = CPg.ChanName $ "c" <> Txt.replace "-" "" (UU.toText sysId)
   pure CQ.QueueCmp
-    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan pollGate
+    { CQ.qStartQueue = startQueue sys pgCmp lgCmp repoCmp envCmp dtCmp chan pollGate hostMax
     , CQ.qCheckUnblocked = checkUnblocked repoCmp sys
     , CQ.qTriggerPoll = Th.openGate pollGate
     }
@@ -63,13 +64,14 @@ startQueue
   -> CDt.DateCmp m
   -> CPg.ChanName
   -> Th.Gate
+  -> Maybe (Text, Int)
   -> m ()
-startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate = do
+startQueue sys pgCmp logCmp repoCmp envCmp dtCmp chanName pollGate hostMax = do
   CPg.pgListenForNotifications pgCmp chanName $ \n -> do
     CL.logTest' logCmp "LISTEN> " n
     Th.openGate pollGate
 
-  void . UA.async $ runPollLoop repoCmp sys pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys)
+  void . UA.async $ runPollLoop repoCmp sys pollGate (tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys hostMax)
 
   CL.logDebug logCmp $ "Starting poll: " <> show (sys ^. C.sysPollPeriodSeconds) <> " seconds"
   void . UA.async $ runTriggerPoll (sys ^. C.sysPollPeriodSeconds) pollGate
@@ -88,11 +90,12 @@ tryProcessNextActiveItem
   -> CL.LogCmp m
   -> CDt.DateCmp m
   -> C.SystemConfig
+  -> Maybe (Text, Int)
   -> m Bool
-tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys = do
+tryProcessNextActiveItem repoCmp envCmp logCmp dtCmp sys hostMax = do
   usrCmp <- CEnv.envDemandUser envCmp
 
-  CR.rpFetchNextActiveItem repoCmp sys >>= \case
+  CR.rpFetchNextActiveItem repoCmp sys hostMax >>= \case
     Right Nothing -> pure False -- Nothing was returned
     Left e -> errorDequeueing e >> pure False -- Return false in case there is a DB error. Returning True could end in an error loop
 

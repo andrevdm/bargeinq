@@ -437,8 +437,9 @@ deleteWorkItem pgCmp (C.WorkItemId wiid) = do
 fetchNextActiveItem
   :: CPg.PsqlCmp IO
   -> C.SystemConfig
+  -> Maybe (Text, Int)
   -> IO (Either Text (Maybe C.DequeuedActiveItem))
-fetchNextActiveItem pgCmp sys = do
+fetchNextActiveItem pgCmp sys hostMax' = do
   let sql = [r|
     select
         r_qid
@@ -449,10 +450,13 @@ fetchNextActiveItem pgCmp sys = do
       , r_work_data
       , r_frid
     from
-      bq_fetch_queue(?)
+      bq_fetch_queue(?, ?, ?)
   |]
   let (C.SystemId sysId) = sys ^. C.sysId
-  CPg.pgQuery pgCmp sql (CPg.Only sysId) "queue.dequeue" >>= \case
+  let params = case hostMax' of
+                 Nothing -> (sysId, Nothing, Nothing)
+                 Just (h, i) -> (sysId, Just h, Just i)
+  CPg.pgQuery pgCmp sql params "queue.dequeue" >>= \case
     Left e -> pure . Left $ "Exception dequeuing:\n" <> show e
     Right [] -> pure . Right $ Nothing
     Right [(qid, wiid, wtid, wiName, dqa, dqw, frId)] ->

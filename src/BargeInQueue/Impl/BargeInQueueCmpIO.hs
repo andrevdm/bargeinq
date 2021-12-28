@@ -53,8 +53,10 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
     , CBq.bqAbortWorkItem = \wiid -> do
         CL.logInfo' logCmp "User manually aborted work item" wiid
         CR.rpAbortWorkItem repoCmp wiid >>= \case
-          Right _ -> CQ.qCheckUnblocked qCmp
           Left e -> CL.logError' logCmp ("Error aborting workitem item: " <> show wiid) e
+          Right _ -> do
+            CQ.qCheckUnblocked qCmp
+            CQ.qTriggerPoll qCmp
 
     , CBq.bqSetWorkItemDone = \wiid -> do
         usrCmp <- CEnv.envDemandUser envCmp
@@ -68,18 +70,23 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
           Right _ -> do
             CQ.qCheckUnblocked qCmp
             CUsr.usrNotifyWorkItemSucceeded usrCmp wi
+            CQ.qTriggerPoll qCmp
 
     , CBq.bqFailQueueItem = \qi -> do
         CL.logInfo' logCmp "User manually failed queue item" qi
         CR.rpFailQueueItem repoCmp qi >>= \case
-          Right _ -> CQ.qCheckUnblocked qCmp
           Left e -> CL.logError' logCmp ("Error manually failing queue item: " <> show qi) e
+          Right _ -> do
+            CQ.qCheckUnblocked qCmp
+            CQ.qTriggerPoll qCmp
 
     , CBq.bqExpireQueueItem = \qi -> do
         CL.logInfo' logCmp "User manually expired queue item" qi
         CR.rpExpireQueueItem repoCmp qi >>= \case
-          Right _ -> CQ.qCheckUnblocked qCmp
           Left e -> CL.logError' logCmp ("Error manually expiring queue item: " <> show qi) e
+          Right _ -> do
+            CQ.qCheckUnblocked qCmp
+            CQ.qTriggerPoll qCmp
 
     , CBq.bqListUnqueuedUnblockedWorkItems = do
         let sysId = CEnv.envSystem envCmp ^. C.sysId

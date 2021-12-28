@@ -26,7 +26,14 @@ CREATE TRIGGER tg_bq_queue_insert_notify
   FOR EACH ROW
   EXECUTE PROCEDURE fn_bq_queue_notify();
 
+CREATE TRIGGER tg_bq_queue_delete_notify
+  AFTER DELETE
+  ON bq_queue
+  FOR EACH ROW
+  EXECUTE PROCEDURE fn_bq_queue_notify();
+
 -- migrate:down
 drop TRIGGER tg_bq_queue_update_notify on bq_queue;
 drop TRIGGER tg_bq_queue_insert_notify on bq_queue;
+drop TRIGGER tg_bq_queue_insert_delete on bq_queue;
 drop function fn_bq_queue_notify();

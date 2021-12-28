@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                bargeinq
-version:             0.1.0.1
+version:             0.1.1.0
 synopsis:            Simple postgres backed job queue
 description:         Job queue built on postgres
 homepage:            https://github.com/andrevdm//bargeinq#readme

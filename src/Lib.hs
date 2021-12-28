@@ -40,6 +40,10 @@ run = do
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
           CPg.TraceNone -- Standard
           CL.LevelDebug
+          "my-host-name"
+          --Nothing
+          (Just 2)
+
   let usrCmp = newUserCmpDemo @IO bq
   CBq.bqStartQueue bq usrCmp
 
@@ -109,12 +113,13 @@ newUserCmpDemo bq =
 
     , CUsr.usrProcessActiveItem = \dqi -> do
         putText $ "~~Processing item " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", data= " <> show (dqi ^. C.dqaWorkData)
-        --CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
+        liftIO $ threadDelay $ 1000000 * 3
+        CBq.bqSetWorkItemDone bq (dqi ^. C.dqaWorkItemId)
         --CBq.bqFailQueueItem bq (dqi ^. C.dqaQueueId)
         --now <- liftIO DT.getCurrentTime
         --let until = DT.addUTCTime (10 * 60) now
         --CBq.bqExtendTimeout bq (dqi ^. C.dqaQueueId) until
-        CBq.bqAbortWorkItem bq (dqi ^. C.dqaWorkItemId)
+        --CBq.bqAbortWorkItem bq (dqi ^. C.dqaWorkItemId)
 
     , CUsr.usrNotifyWorkItemSucceeded = \wi -> do
         putText $ "~~succeeded" <> show (wi ^. C.wiId) <> ", " <> fromMaybe "" (wi ^. C.wiData)

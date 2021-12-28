@@ -12,7 +12,7 @@ import qualified BargeInQueue.Core as C
 data RepoCmp m = RepoCmp
   { rpListSystems :: !(m (Either Text [C.SystemConfig]))
   , rpGetSystem :: !(C.SystemId -> m (Either Text (Maybe C.SystemConfig)))
-  , rpFetchNextActiveItem :: !(C.SystemConfig -> m (Either Text (Maybe C.DequeuedActiveItem)))
+  , rpFetchNextActiveItem :: !(C.SystemConfig -> Maybe (Text, Int) -> m (Either Text (Maybe C.DequeuedActiveItem)))
   , rpDeleteWorkItem :: !(C.WorkItemId -> m (Either Text ()))
   , rpDeleteQueueItem :: !(C.QueueItemId -> m (Either Text ()))
   , rpExpireQueueItem :: !(C.QueueItemId -> m (Either Text ()))

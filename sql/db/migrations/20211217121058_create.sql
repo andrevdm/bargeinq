@@ -99,6 +99,7 @@ CREATE TABLE if not exists bq_queue
   heartbeat_at timestamp with time zone null,
   dequeued_at timestamp with time zone null,
   frId int null references bq_fail_reason (frId),
+  host text COLLATE pg_catalog."default" NULL,
 
   CONSTRAINT bq_queue_pkey PRIMARY KEY (qId)
 );
@@ -107,6 +108,7 @@ CREATE unique INDEX if not exists ix_bq_queue_wiid ON bq_queue (wiid);
 CREATE INDEX if not exists ix_bq_queue_locked_until ON bq_queue (locked_until);
 CREATE INDEX if not exists ix_bq_queue_heartbeat_at ON bq_queue (heartbeat_at);
 CREATE INDEX if not exists ix_bq_queue_fail_readon ON bq_queue (frId);
+CREATE INDEX if not exists ix_bq_queue_host ON bq_queue (host);
 
 
 -- migrate:down
