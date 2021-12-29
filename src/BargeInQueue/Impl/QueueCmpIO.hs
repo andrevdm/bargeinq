@@ -285,9 +285,12 @@ runHeartbeatChecks _pgCmp logCmp repoCmp envCmp periodSeconds sys = forever $ do
 
   -- Fail all that missed too many heartbeats
   -- Call this before the code below so that the failed ones are removed first
-  CR.rpFailAllHeartbeatExpired repoCmp sysId >>= \case
-    Right _ -> pass
-    Left e -> CL.logError' logCmp "Error failing missed heartbeats" e
+  qids <- CR.rpFailAllHeartbeatExpired repoCmp sysId >>= \case
+    Right r -> pure r
+    Left e -> CL.logError' logCmp "Error failing missed heartbeats" e >> pure []
+
+
+  unless (null qids) $ CUsr.usrNotifyHeartbeatsFailed usrCmp qids
 
   -- Notify the user, if the want notifications of missing heartbeats
   case CUsr.usrNotifyHeartbeatsMissed usrCmp of

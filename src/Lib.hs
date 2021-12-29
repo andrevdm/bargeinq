@@ -140,6 +140,6 @@ newUserCmpDemo bq =
     , CUsr.usrNotifyHeartbeatsMissed = Just $ \qis ->
         putText $ "~~Heartbeats missed" <> show (qis ^.. traversed . C.qiId)
 
-    , CUsr.usrNotifyHeartbeatsFailed = \qis ->
-        putText $ "~~Heartbeats failed" <> show (qis ^.. traversed . C.qiId)
+    , CUsr.usrNotifyHeartbeatsFailed = \qids ->
+        putText $ "~~Heartbeats failed" <> show qids
     }

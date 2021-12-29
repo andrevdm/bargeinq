@@ -25,5 +25,5 @@ data UserCmp m = UserCmp
   , usrNotifyWorkItemFailedNoMoreRetries :: !(C.WorkItem -> m ())
   , usrNotifyWorkItemSucceeded :: !(C.WorkItem -> m ())
   , usrNotifyHeartbeatsMissed :: !(Maybe ([C.QueueItem] -> m ()))
-  , usrNotifyHeartbeatsFailed :: !([C.QueueItem] -> m ())
+  , usrNotifyHeartbeatsFailed :: !([C.QueueItemId] -> m ())
   }

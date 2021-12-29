@@ -591,7 +591,7 @@ getMissedHeartbeats pgCmp forFailed (C.SystemId sysId) = do
 failAllHeartbeatExpired
   :: CPg.PsqlCmp IO
   -> C.SystemId
-  -> IO (Either Text ())
+  -> IO (Either Text [C.QueueItemId])
 failAllHeartbeatExpired pgCmp (C.SystemId sysId) = do
   let sql = [r|
     update
@@ -615,11 +615,12 @@ failAllHeartbeatExpired pgCmp (C.SystemId sysId) = do
         and wt.heartbeat_num_missed_for_error is not null
         and q.dequeued_at is not null
         and coalesce(q.heartbeat_at, q.dequeued_at) + (interval '1 second' * wt.heartbeat_expected_every_seconds * wt.heartbeat_num_missed_for_error) < now()
-    )
+      )
+    returning xq.qid
   |]
-  CPg.pgExecute pgCmp sql (C.failReasonToId C.FrHeartbeatTimeout, sysId) "queue.fail.heartbeat" >>= \case
+  CPg.pgQuery pgCmp sql (C.failReasonToId C.FrHeartbeatTimeout, sysId) "queue.fail.heartbeat" >>= \case
     Left e -> pure . Left $ "Exception failing heartbeats:\n" <> show e
-    Right _ -> pure . Right $ ()
+    Right qids -> pure . Right $ qids <&> \(CPg.Only i) -> C.QueueItemId i
 
 
 

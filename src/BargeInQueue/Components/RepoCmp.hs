@@ -29,7 +29,7 @@ data RepoCmp m = RepoCmp
   , rpExtendTimeout :: !(C.QueueItemId -> UTCTime -> m (Either Text ()))
   , rpGetMissedHeartbeats :: !(C.SystemId -> m (Either Text [C.QueueItem]))
   , rpGetFailHeartbeats :: !(C.SystemId -> m (Either Text [C.QueueItem]))
-  , rpFailAllHeartbeatExpired :: !(C.SystemId -> m (Either Text ()))
+  , rpFailAllHeartbeatExpired :: !(C.SystemId -> m (Either Text [C.QueueItemId]))
   , rpGotHeartbeat :: !(C.QueueItemId -> m (Either Text ()))
   , rpAddPendingWorkItem :: !(C.NewWorkItem -> m (Either Text C.WorkItemId))
   , rpAddActiveQueueItem :: !(C.NewWorkItem -> m (Either Text C.QueueItemId))
