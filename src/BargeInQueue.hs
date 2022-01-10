@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module BargeInQueue
     ( mkBargeInQueue
@@ -21,7 +20,6 @@ import           System.FilePath ((</>))
 import           UnliftIO.Exception (throwString)
 import qualified Data.ByteString as BS
 import qualified Data.Version as V
-import qualified Data.FileEmbed as Fe
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
@@ -36,6 +34,7 @@ import qualified BargeInQueue.Impl.RepoCmpPsql as CR
 import qualified BargeInQueue.Impl.UuidCmpIO as CUu
 import qualified BargeInQueue.Components.LogCmp as CL
 import qualified Paths_bargeinq as Paths
+import qualified BargeInQueue.Migrations as M
 
 version :: V.Version
 version = Paths.version
@@ -96,12 +95,9 @@ writeMigrations :: FilePath -> IO ()
 writeMigrations dest = do
   Dir.createDirectoryIfMissing True dest
 
-  for_ migrationsDir $ \(p, bs) -> do
+  for_ M.getMigrations $ \(p, bs) ->
     BS.writeFile (dest </> p) bs
 
-
-migrationsDir :: [(FilePath, BS.ByteString)]
-migrationsDir = $(Fe.makeRelativeToProject "sql/db/migrations/" >>= Fe.embedDir)
 
 --migrationFiles :: [FilePath]
 --migrationFiles = $(Fe.embedDirListing "sql/db/migrations")
