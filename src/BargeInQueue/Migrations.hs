@@ -11,13 +11,13 @@ import           Text.RawString.QQ (r)
 
 
 getMigrations :: [(FilePath, ByteString)]
-getMigrations = [ ("20211217121058_create", sql_20211217121058_create)
-                , ("20211217140058_testData", sql_20211217140058_testData)
-                , ("20211218143535_fn_listen", sql_20211218143535_fn_listen)
-                , ("20211218155829_tg_queue_notify", sql_20211218155829_tg_queue_notify)
-                , ("20211219102340_fetch_queue", sql_20211219102340_fetch_queue)
-                , ("20211221065337_vw_unblocked_unqueued", sql_20211221065337_vw_unblocked_unqueued)
-                , ("20211221072601_fn_unblocked", sql_20211221072601_fn_unblocked)
+getMigrations = [ ("20211217121058_create.sql", sql_20211217121058_create)
+                , ("20211217140058_testData.sql", sql_20211217140058_testData)
+                , ("20211218143535_fn_listen.sql", sql_20211218143535_fn_listen)
+                , ("20211218155829_tg_queue_notify.sql", sql_20211218155829_tg_queue_notify)
+                , ("20211219102340_fetch_queue.sql", sql_20211219102340_fetch_queue)
+                , ("20211221065337_vw_unblocked_unqueued.sql", sql_20211221065337_vw_unblocked_unqueued)
+                , ("20211221072601_fn_unblocked.sql", sql_20211221072601_fn_unblocked)
                 ]
 
 
