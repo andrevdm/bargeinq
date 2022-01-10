@@ -7,6 +7,7 @@ module Lib
     ( run
     , version
     , versionTxt
+    , witeMigrations
     ) where
 
 import           Verset
