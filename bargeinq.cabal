@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                bargeinq
-version:             0.1.1.4
+version:             0.1.1.5
 synopsis:            Simple postgres backed job queue
 description:         Job queue built on postgres
 homepage:            https://github.com/andrevdm//bargeinq#readme
@@ -12,8 +12,6 @@ copyright:           2021 Andre Van Der Merwe <andre@andrevdm.com>
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-data-dir:            sql/db/migrations
-data-files:          *.sql
 
 common common-options
   build-depends:
@@ -66,6 +64,7 @@ library
                      , colour
                      , containers
                      , directory
+                     , file-embed
                      , filepath
                      , lens
                      , postgresql-simple
