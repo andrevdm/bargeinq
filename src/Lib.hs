@@ -5,14 +5,19 @@
 
 module Lib
     ( run
+    , version
+    , versionTxt
     ) where
 
 import           Verset
 import           Control.Lens ((^.), (^..), traversed)
---import qualified Data.Time as DT
 import qualified Data.Text as Txt
 import qualified Data.UUID as UU
 import qualified Data.UUID.V4 as UU
+import qualified Data.Version as V
+import qualified System.Directory as Dir
+import qualified System.Environment as Env
+import           System.FilePath ((</>))
 import qualified System.IO as IO
 import           UnliftIO (MonadUnliftIO, throwString)
 
@@ -22,6 +27,8 @@ import qualified BargeInQueue.Components.LogCmp as CL
 import qualified BargeInQueue.Components.UserCmp as CUsr
 import qualified BargeInQueue.Impl.PsqlCmpIO as CPg
 import qualified BargeInQueue as Bq
+import qualified Paths_bargeinq as Paths
+
 
 
 testSysId :: C.SystemId
@@ -30,11 +37,33 @@ testSysId = C.SystemId $ UU.fromWords 918212935 1131432256 2699803656 3287151122
 testWorkType :: C.WorkTypeId
 testWorkType = C.WorkTypeId $ UU.fromWords 3523928252 3368372076 2491820724 2868489993
 
+version :: V.Version
+version = Paths.version
+
+versionTxt :: Text
+versionTxt = Txt.pack $ V.showVersion Paths.version
 
 run :: IO ()
 run = do
-  --let usrCmp = newUserCmpDemo
+  Env.getArgs >>= \case
+    ["version"] -> putText versionTxt
+    ["writeMigrations", path] -> writeMigrations path
+    ["demo"] -> runDemo
+    _ -> putText "invalid args"
 
+
+writeMigrations :: FilePath -> IO ()
+writeMigrations dest = do
+  Dir.createDirectoryIfMissing True dest
+
+  dataDir <- Paths.getDataDir
+  fs <- Dir.listDirectory dataDir
+  for_ fs $ \p -> do
+    Dir.copyFile (dataDir </> p) (dest </> p)
+
+
+runDemo :: IO ()
+runDemo =  do
   bq <- Bq.mkBargeInQueue
           testSysId
           "postgres://bargeinq@127.0.0.1:5432/bargeinq?sslmode=disable&options=--search_path%3dpublic"
