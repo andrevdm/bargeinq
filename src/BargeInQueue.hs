@@ -5,6 +5,9 @@
 
 module BargeInQueue
     ( mkBargeInQueue
+    , version
+    , versionTxt
+    , writeMigrations
     ) where
 
 import           Verset
@@ -12,8 +15,10 @@ import           Control.Concurrent.STM (atomically)
 import qualified Control.Concurrent.STM.TBMQueue as TBMQ
 import           Control.Lens ((^.))
 import qualified Data.Text as Txt
+import qualified System.Directory as Dir
+import           System.FilePath ((</>))
 import           UnliftIO.Exception (throwString)
-
+import qualified Data.Version as V
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.BargeInQueueCmp as CBq
@@ -27,6 +32,14 @@ import qualified BargeInQueue.Impl.QueueCmpIO as CQ
 import qualified BargeInQueue.Impl.RepoCmpPsql as CR
 import qualified BargeInQueue.Impl.UuidCmpIO as CUu
 import qualified BargeInQueue.Components.LogCmp as CL
+import qualified Paths_bargeinq as Paths
+
+version :: V.Version
+version = Paths.version
+
+versionTxt :: Text
+versionTxt = Txt.pack $ V.showVersion Paths.version
+
 
 mkBargeInQueue
   :: C.SystemId
@@ -73,3 +86,16 @@ mkBargeInQueue sysId connStr tracePg minLogLevel hostName hostMaxItems = do
 
 
   pure $ CBq.newBargeInQueueCmpIO q dt uu lg pg env repo
+
+
+
+writeMigrations :: FilePath -> IO ()
+writeMigrations dest = do
+  Dir.createDirectoryIfMissing True dest
+
+  dataDir <- Paths.getDataDir
+  fs <- Dir.listDirectory dataDir
+  for_ fs $ \p -> do
+    Dir.copyFile (dataDir </> p) (dest </> p)
+
+
