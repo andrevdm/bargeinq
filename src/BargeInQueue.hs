@@ -101,7 +101,7 @@ writeMigrations dest = do
 
 
 migrationsDir :: [(FilePath, BS.ByteString)]
-migrationsDir = $(Fe.embedDir "sql/db/migrations")
+migrationsDir = $(Fe.makeRelativeToProject "sql/db/migrations/" >>= Fe.embedDir)
 
 --migrationFiles :: [FilePath]
 --migrationFiles = $(Fe.embedDirListing "sql/db/migrations")
