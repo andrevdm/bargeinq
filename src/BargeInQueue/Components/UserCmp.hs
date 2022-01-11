@@ -21,7 +21,7 @@ data UserCmp m = UserCmp
   , usrProcessActiveItem :: !(C.DequeuedActiveItem -> m ())
   , usrNotifyWorkItemTimeout :: !(C.DequeuedActiveItem -> m ())
   , usrNotifyWorkItemFailed :: !(C.DequeuedActiveItem -> C.FailReason -> m ())
-  , usrNotifyRetrypingWorkItem :: !(C.QueueItemId -> C.WorkItem -> m ())
+  , usrNotifyRetryingWorkItem :: !(C.QueueItemId -> C.WorkItem -> m ())
   , usrNotifyWorkItemFailedNoMoreRetries :: !(C.WorkItem -> m ())
   , usrNotifyWorkItemSucceeded :: !(C.WorkItem -> m ())
   , usrNotifyHeartbeatsMissed :: !(Maybe ([C.QueueItem] -> m ()))

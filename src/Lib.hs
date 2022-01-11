@@ -139,7 +139,7 @@ newUserCmpDemo bq =
     , CUsr.usrNotifyWorkItemFailed = \dqi fr -> do
         putText $ "~~Work item failed " <> show (dqi ^. C.dqaQueueId) <> ", for " <> (dqi ^. C.dqaWorkItemName) <> ", with " <> show fr
 
-    , CUsr.usrNotifyRetrypingWorkItem = \qid wi -> do
+    , CUsr.usrNotifyRetryingWorkItem = \qid wi -> do
         putText $ "~~Retrying" <> show qid <> ", " <> fromMaybe "" (wi ^. C.wiData)
 
     , CUsr.usrNotifyWorkItemFailedNoMoreRetries = \wi ->

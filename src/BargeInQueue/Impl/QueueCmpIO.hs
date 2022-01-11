@@ -183,7 +183,7 @@ retryWorkItem repoCmp usrCmp _logCmp dtCmp _envCmp sys dqi = do
         Right q -> pure q
         Left e -> UE.throwString . Txt.unpack $ "Error creating queue item for retry" <> show (wi ^. C.wiId) <> "\n" <> e
 
-      CUsr.usrNotifyRetrypingWorkItem usrCmp qid wi
+      CUsr.usrNotifyRetryingWorkItem usrCmp qid wi
 
 
     noMoreRetries wi = do
