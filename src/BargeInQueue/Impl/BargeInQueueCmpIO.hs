@@ -107,5 +107,7 @@ newBargeInQueueCmpIO qCmp _dtCmp _uuCmp logCmp _pgCmp envCmp repoCmp =
     , CBq.bqGetQueueItem = CR.rpGetQueueItem repoCmp
     , CBq.bqGetWorkItem = CR.rpGetWorkItem repoCmp
     , CBq.bqGetWorkType = CR.rpGetWorkType repoCmp
+
+    , CBq.bqLog = pure logCmp
     }
 

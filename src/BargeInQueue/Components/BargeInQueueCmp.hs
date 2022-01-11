@@ -8,6 +8,7 @@ import           Verset
 
 import qualified BargeInQueue.Core as C
 import qualified BargeInQueue.Components.UserCmp as CUsr
+import qualified BargeInQueue.Components.LogCmp as CL
 
 data BargeInQueueCmp m = BargeInQueueCmp
   { bqVersion :: !Text
@@ -29,4 +30,6 @@ data BargeInQueueCmp m = BargeInQueueCmp
   , bqGetQueueItem :: !(C.QueueItemId -> m (Either Text C.QueueItem))
   , bqGetWorkItem :: !(C.WorkItemId -> m (Either Text C.WorkItem))
   , bqGetWorkType :: !(C.WorkTypeId -> m (Either Text C.WorkType))
+
+  , bqLog :: !(m (CL.LogCmp m))
   }
